@@ -6,7 +6,7 @@ import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import { CellFace, Screen } from './shared';
-import { STICKERS, firstGrapheme, useSticker } from '../lib/sticker';
+import { STICKERS, firstGrapheme, stickerImage, useSticker } from '../lib/sticker';
 
 export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
   const { snap, me, run } = ctx;
@@ -62,7 +62,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
                 <CellFace item={it} candidates={snap.room.candidates} />
                 {done && (sticker === 'SÍ'
                   ? <i className="stamp" aria-hidden>Sí</i>
-                  : <i className="sticker" aria-hidden style={{ '--rot': `${((i * 37) % 31) - 15}deg` } as React.CSSProperties}>{sticker}</i>)}
+                  : <i className="sticker" aria-hidden style={stickerPose(it.id)}><StickerArt s={sticker} /></i>)}
                 {pending && !done && <i className="var-tag" aria-hidden>VAR</i>}
               </button>
             );
@@ -72,7 +72,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
       <div className="board-foot">
         <p className="board-hint">{finished ? 'La partida ha terminado.' : 'Toca una casilla cuando pase para cantarla.'}</p>
         <button className="sticker-btn" onClick={() => setPicking(true)} aria-label="Cambiar tu sello">
-          <span className={sticker === 'SÍ' ? 'mini-stamp' : ''}>{sticker}</span> Tu sello
+          {sticker === 'SÍ' ? <span className="mini-stamp">Sí</span> : <span className="sticker-ico"><StickerArt s={sticker} /></span>} Tu sello
         </button>
       </div>
       {picking && <StickerPicker value={sticker} onPick={(s) => { setSticker(s); setPicking(false); }} onClose={() => setPicking(false)} />}
@@ -136,7 +136,7 @@ function StickerPicker({ value, onPick, onClose }: { value: string; onPick: (s: 
         <div className="sticker-grid">
           {STICKERS.map((s) => (
             <button key={s} className={`sticker-opt ${s === 'SÍ' ? 'classic' : ''}`} aria-pressed={value === s} onClick={() => onPick(s)} aria-label={s === 'SÍ' ? 'Sello clásico SÍ' : s}>
-              {s === 'SÍ' ? <span className="mini-stamp">Sí</span> : s}
+              {s === 'SÍ' ? <span className="mini-stamp">Sí</span> : <StickerArt s={s} />}
             </button>
           ))}
         </div>
@@ -147,4 +147,23 @@ function StickerPicker({ value, onPick, onClose }: { value: string; onPick: (s: 
       </div>
     </div>
   );
+}
+
+/** Pose "pegada a mano" estable por evento: giro, desplazamiento y tamaño pseudoaleatorios. */
+function stickerPose(seed: string): React.CSSProperties {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const r = (n: number) => ((h >>> (n * 5)) & 1023) / 1023; // 0..1
+  return {
+    '--rot': `${Math.round(r(0) * 56 - 28)}deg`,
+    '--dx': `${Math.round(r(1) * 24 - 12)}%`,
+    '--dy': `${Math.round(r(2) * 20 - 10)}%`,
+    '--sc': (0.9 + r(3) * 0.25).toFixed(2),
+  } as React.CSSProperties;
+}
+
+/** Dibujo del sticker: Fluent 3D si existe, si no el emoji del sistema. */
+function StickerArt({ s }: { s: string }) {
+  const src = stickerImage(s);
+  return src ? <img className="sticker-img" src={src} alt="" draggable={false} /> : <>{s}</>;
 }

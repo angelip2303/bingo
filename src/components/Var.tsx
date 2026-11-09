@@ -58,11 +58,13 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
       {isReferee ? 'Pitar' : 'Cantar un evento'}
     </button>
   );
-  // botón flotante: siempre a mano sin ocupar sitio en la lista
-  const fab = live && !panelOpen && (
-    <button className={`fab ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)} aria-label={isReferee ? 'Pitar un evento' : 'Cantar un evento'}>
-      {isReferee ? 'Pitar' : 'Cantar'}
-    </button>
+  // barra fija al pie, separada de la lista (como la barra de estado del cartón)
+  const actionBar = live && !panelOpen && (
+    <div className="var-actions">
+      <button className={`btn big ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)}>
+        {isReferee ? 'Pitar un evento' : 'Cantar un evento'}
+      </button>
+    </div>
   );
   const empty = pending.length === 0 && timeline.length === 0;
 
@@ -78,6 +80,7 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
           </div>
         ) : (
           <>
+           <div className="var-scroll">
             {pending.length > 0 && <VarCheck claims={pending} ctx={ctx} />}
 
             <div className="view-head timeline-head">
@@ -103,7 +106,8 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
                 ))}
               </ol>
             )}
-            {fab}
+           </div>
+            {actionBar}
           </>
         )}
       </div>
@@ -230,6 +234,7 @@ function ClaimRow({ claim, ctx }: { claim: Claim; ctx: RoomCtx }) {
         <span className="vote-bar"><i style={{ width: `${(yes / (yes + no)) * 100}%` }} /></span>
         <span className="small"><b>{yes}</b> sí · <b>{no}</b> no</span>
       </div>
+      {claim.player_id === me.id && <div className="row-actions own-claim">Es tu cante: espera al árbitro</div>}
       {claim.player_id !== me.id && (
         <div className="row-actions">
           <button className="btn ghost" aria-pressed={myVote === true} onClick={() => run(() => backend.vote(claim.id, me.id, true))}>Ha pasado</button>
