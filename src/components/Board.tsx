@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { backend } from '../backend';
-import { completedLines, type PlayerScore } from '../lib/scoring';
+import { allLines, completedLines, type PlayerScore } from '../lib/scoring';
 import { itemText } from '../lib/suggestions';
 import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
@@ -28,15 +28,17 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
   const mine = scores.find((s) => s.player.id === me.id);
   const rank = scores.findIndex((s) => s.player.id === me.id) + 1;
   const finished = snap.room.status === 'finished';
+  // la línea a la que menos le falta (0 = no queda ninguna por completar)
+  const missing = allLines(n).map((l) => l.filter((i) => !happened.has(card.cells[i])).length).filter((m) => m > 0);
+  const nextLine = missing.length ? Math.min(...missing) : 0;
 
   return (
     <div className="stage-view">
-      <div className="score-strip">
-        <div><b className="num">{mine?.total ?? 0}</b><span>puntos</span></div>
-        <div><b className="num">{rank}º</b><span>de {scores.length}</span></div>
-        <div><b className="num">{mine?.lines ?? 0}</b><span>líneas</span></div>
-        <div><b className="num">{mine?.cells ?? 0}/{n * n}</b><span>casillas</span></div>
-      </div>
+      <ScoreBug
+        rank={rank} players={scores.length} points={mine?.total ?? 0}
+        cells={mine?.cells ?? 0} total={n * n} lines={mine?.lines ?? 0}
+        nextLine={nextLine} bingo={!!mine?.bingo}
+      />
 
       <div className="stage">
         <div className="grid live" style={{ '--n': n } as React.CSSProperties}>
@@ -92,6 +94,24 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
           </div>
         </Screen>
       )}
+    </div>
+  );
+}
+
+/** Marcador tipo rótulo de tele: posición, puntos, casillas y lo que falta para la próxima línea. */
+function ScoreBug({ rank, players, points, cells, total, lines, nextLine, bingo }: {
+  rank: number; players: number; points: number; cells: number; total: number; lines: number; nextLine: number; bingo: boolean;
+}) {
+  const hint = bingo ? '¡Bingo!' : nextLine === 1 ? '¡A 1 de línea!' : nextLine ? `A ${nextLine} de línea` : '';
+  return (
+    <div className="scorebug" aria-label={`Vas ${rank}º de ${players} con ${points} puntos`}>
+      <div className="sb-rank"><b className="display">{rank}º</b><span>de {players}</span></div>
+      <div className="sb-points"><b className="display num">{points}</b><span>puntos</span></div>
+      <div className="sb-progress">
+        <div className="sb-row"><span>{lines} {lines === 1 ? 'línea' : 'líneas'}</span><b className="num">{cells}/{total}</b></div>
+        <span className="sb-bar"><i style={{ width: `${(cells / total) * 100}%` }} /></span>
+        {hint && <span className={`sb-hint ${nextLine === 1 || bingo ? 'hot' : ''}`}>{hint}</span>}
+      </div>
     </div>
   );
 }

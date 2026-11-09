@@ -683,3 +683,57 @@ input:focus::placeholder { color: transparent; }
 /* casillas grandes (ordenador): rótulo más grande */
 @container (min-width: 170px) { .cell .cell-tag { zoom: 1.35; } }
 @container (min-width: 240px) { .cell .cell-tag { zoom: 1.6; } .cell > .cell-text { font-size: 1.15em; } }
+/* mismo ancho para el panel vacío y el de edición */
+@media (min-width: 900px) {
+  .editor { --panel-w: 440px; }
+  .editor .panel-dock, .editor.editing .panel-dock { flex: 0 0 var(--panel-w); width: var(--panel-w); min-width: 0; }
+}
+@media (min-width: 1400px) { .editor { --panel-w: 520px; } }
+
+/* ---------- legibilidad de las casillas ---------- */
+.cell.filled, .grid.live .cell {
+  justify-content: flex-start; align-items: flex-start; text-align: left;
+  padding: clamp(6px, 6cqi, 14px); gap: clamp(4px, 4cqi, 10px);
+}
+.cell .cell-tag { justify-content: flex-start; }
+.cell > .cell-text {
+  font-size: clamp(11px, 10.5cqi, 24px); font-weight: 600; line-height: 1.22; letter-spacing: -.005em;
+  color: var(--ink); hyphens: manual; overflow-wrap: break-word; text-wrap: balance;
+  -webkit-line-clamp: 5;
+}
+.cell .cell-tag + .cell-text { -webkit-line-clamp: 4; }
+.cell.done > .cell-text { color: color-mix(in srgb, var(--ink) 55%, transparent); opacity: 1; }
+.cell.preview > .cell-text { font-size: 13px; }
+/* el texto usa todo el ancho de la casilla: no partir palabras salvo que no quepan */
+.cell > .cell-text { width: 100%; overflow-wrap: normal; word-break: normal; hyphens: auto; font-size: clamp(11px, 10cqi, 24px); }
+
+/* ---------- marcador de partida (rótulo de tele) ---------- */
+.scorebug { flex: none; display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); overflow: hidden; }
+.sb-rank { flex: none; width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--accent); color: #fff; }
+.sb-rank b { font-size: 34px; line-height: .9; }
+.sb-rank span { font: 600 10px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+.sb-points { flex: none; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 14px; border-right: 1px solid var(--line); }
+.sb-points b { font-size: 40px; line-height: .9; }
+.sb-points span, .sb-row span { font: 600 10px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.sb-progress { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 10px 14px; }
+.sb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sb-row b { font: 400 18px/1 var(--display); }
+.sb-bar { display: block; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.sb-bar i { display: block; height: 100%; background: var(--accent); transition: width .4s var(--ease); }
+.sb-hint { font: 400 15px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.sb-hint.hot { color: var(--yellow); animation: blink 1.2s steps(1) infinite; }
+
+/* ---------- pitar ---------- */
+.whistle-done { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--r-l); background: color-mix(in srgb, var(--good) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); animation: pop .2s var(--ease) both; }
+.whistle-done b { color: var(--ink); }
+.cell > .cell-text { text-wrap: pretty; hyphens: manual; font-size: clamp(10.5px, 10cqi, 24px); }
+
+/* VAR con panel de pitar acoplado (mismo esquema que el editor del cartón) */
+.var.editor { max-width: none; flex-direction: column; }
+.var-main { overflow-y: auto; overscroll-behavior: contain; gap: 12px; }
+.var.editor:not(.editing) .var-main { width: 100%; max-width: 760px; margin-inline: auto; }
+.var.editing .view-head { display: flex; }
+.dock-title { flex: 1; text-align: left !important; padding-left: 4px; }
+@media (min-width: 900px) { .var.editor { flex-direction: row; } }
+.room-main > section { min-height: 0; }
+.var-main { padding-top: 6px; }
