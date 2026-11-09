@@ -15,8 +15,9 @@
   --r-l: 6px;
   --gutter: 16px;
   --display: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
-  --body: 'Barlow', system-ui, -apple-system, sans-serif;
-  --cell: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --cell: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --ease: cubic-bezier(.2, .8, .2, 1);
   --tabbar: 64px;
   color-scheme: dark;
@@ -934,3 +935,18 @@ input, select { font-weight: 500; }
 .sticker-img { display: block; width: 1em; height: 1em; object-fit: contain; pointer-events: none; }
 .sticker-ico { display: inline-grid; place-items: center; font-size: 22px; }
 .sticker-opt .sticker-img { width: 38px; height: 38px; }
+.whoami { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 16px; }
+.link-btn { min-height: 44px; border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: 500 14px/1 var(--body); }
+.link-btn:hover { color: var(--ink); }
+
+/* ---------- mono (IBM Plex Mono): códigos de sala y números ---------- */
+.num, .code-chip, .big-code, .code-input, .tl-time, .seat i, .player-state, .pick-meta, .bank-meta,
+.vote-bar + .small, .vc-nav b, .sb-row b {
+  font-family: var(--mono) !important; font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.num { font-weight: 600; }
+.big-code { font-weight: 600; font-size: 52px; letter-spacing: .12em; padding-left: .12em; }
+.code-chip { font-weight: 500; letter-spacing: .1em; }
+.code-input { font-weight: 500; letter-spacing: .25em !important; }
+.tl-time { font-size: 15px; font-weight: 600; }
+.sb-points b, .desk-stats b, .fame-wins b, .fame-pts b, .score-strip b { letter-spacing: -.02em; }

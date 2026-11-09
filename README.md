@@ -15,13 +15,14 @@ Puntos: +1 por casilla, +5 por línea, +3 a la primera línea, +20 por bingo, +1
 
 ```bash
 npm install
-npm run dev      # sin .env.local funciona en modo local (varias pestañas = varios jugadores)
+npm run dev      # sin .env.local arranca en modo local de desarrollo (cada pestaña = un jugador)
 npm test
 ```
 
 ## Supabase
 
 1. En el proyecto: **Authentication → Sign In / Providers → Allow anonymous sign-ins** activado.
+   No hay registro: cada uno pone su nombre. El mismo nombre en el ordenador y en el móvil es el mismo jugador.
 2. **SQL Editor** → pega `supabase/schema.sql` → Run.
 3. **Project Settings → API**: copia la URL y la clave `anon` / publishable a `.env.local` (ver `.env.example`).
 

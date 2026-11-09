@@ -1,21 +1,49 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { Backend } from './api';
+import type { Account, Backend } from './api';
+import { usernameKey } from '../lib/account';
 import { randomCode } from './api';
 import type { Item, Player, Result, Room } from '../types';
 
 export function createSupabaseBackend(url: string, key: string): Backend {
   const sb: SupabaseClient = createClient(url, key);
 
-  let sessionReady: Promise<string> | null = null;
-  const ensureSession = () => {
-    sessionReady ??= (async () => {
+  /**
+   * Identidad ligera para amigos: cada dispositivo tiene una sesión anónima de Supabase
+   * (invisible) y al poner tu nombre queda vinculada a él. El mismo nombre en otro
+   * dispositivo = el mismo jugador. Requiere "Allow anonymous sign-ins" activado.
+   */
+  let anon: Promise<string> | null = null;
+  const anonSession = () => {
+    anon ??= (async () => {
       const { data } = await sb.auth.getSession();
       if (data.session) return data.session.user.id;
       const { data: signed, error } = await sb.auth.signInAnonymously();
-      if (error) throw new Error('No se pudo iniciar sesión anónima: ' + error.message);
+      if (error) { anon = null; throw new Error('No se pudo conectar: ' + error.message); }
       return signed.user!.id;
     })();
-    return sessionReady;
+    return anon;
+  };
+  let me_: Account | null = null;
+  const loadAccount = async (): Promise<Account | null> => {
+    if (me_) return me_;
+    const uid = await anonSession();
+    const res = await sb.from('profile_devices').select('key, profiles(username)').eq('auth_uid', uid).maybeSingle();
+    if (res.error) throw new Error(res.error.message);
+    const row = res.data as { key: string; profiles: { username: string } | { username: string }[] | null } | null;
+    if (!row) return null;
+    const prof = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    me_ = { id: row.key, username: prof?.username ?? row.key };
+    return me_;
+  };
+  const ensureSession = async () => {
+    const acc = await loadAccount();
+    if (!acc) throw new Error('Pon tu nombre primero');
+    return acc.id; // clave del nombre
+  };
+  const myName = async () => {
+    const acc = await loadAccount();
+    if (!acc) throw new Error('Pon tu nombre primero');
+    return acc.username;
   };
 
   const ok = <T>(res: { data: T; error: { message: string } | null }): T => {
@@ -26,8 +54,26 @@ export function createSupabaseBackend(url: string, key: string): Backend {
   const api: Backend = {
     mode: 'supabase',
 
-    async createRoom({ name, candidates, boardSize, playerName, seedItems }) {
-      await ensureSession();
+    async currentUser() {
+      return loadAccount();
+    },
+
+    async signIn(username) {
+      await anonSession();
+      const key = usernameKey(username);
+      ok(await sb.rpc('claim_username', { p_key: key, p_name: username.trim() }));
+      me_ = { id: key, username: username.trim() };
+      return me_;
+    },
+
+    async signOut() {
+      await anonSession();
+      ok(await sb.rpc('release_username'));
+      me_ = null;
+    },
+
+    async createRoom({ name, candidates, boardSize, seedItems }) {
+      const playerName = await myName();
       // reintento por si el código aleatorio choca
       let room: Room | null = null;
       for (let i = 0; i < 5 && !room; i++) {
@@ -38,7 +84,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         else if (!res.error.message.includes('duplicate')) throw new Error(res.error.message);
       }
       if (!room) throw new Error('No se pudo crear la sala');
-      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName }).select().single()) as Player;
+      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName, username_key: await ensureSession() }).select('id, room_id, name, created_at').single()) as Player;
       ok(await sb.from('rooms').update({ referee_id: player.id }).eq('id', room.id));
       room.referee_id = player.id;
       if (seedItems.length) {
@@ -56,16 +102,17 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     async me(roomId) {
       const uid = await ensureSession();
       const res = await sb.from('players').select('id, room_id, name, created_at')
-        .eq('room_id', roomId).eq('auth_uid', uid).maybeSingle();
+        .eq('room_id', roomId).eq('username_key', uid).maybeSingle();
       return (ok(res) as Player | null) ?? null;
     },
 
-    async joinRoom(code, playerName) {
+    async joinRoom(code) {
+      const playerName = await myName();
       const room = await api.findRoom(code);
       if (!room) throw new Error('No existe ninguna sala con ese código');
       const existing = await api.me(room.id);
       if (existing) return { room, player: existing };
-      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName })
+      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName, username_key: await ensureSession() })
         .select('id, room_id, name, created_at').single()) as Player;
       return { room, player };
     },

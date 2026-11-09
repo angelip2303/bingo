@@ -1,6 +1,8 @@
 -- Bingo Salvaje — esquema para Supabase.
 -- Pégalo entero en: Dashboard → SQL Editor → New query → Run.
 -- Requisito: Authentication → Sign In / Providers → "Allow anonymous sign-ins" ACTIVADO.
+-- Identidad para amigos: cada dispositivo tiene una sesión anónima (invisible) y al poner
+-- tu nombre queda vinculada a él. El mismo nombre en otro dispositivo = el mismo jugador.
 
 create extension if not exists pgcrypto;
 
@@ -15,13 +17,27 @@ create table if not exists rooms (
   created_at timestamptz not null default now()
 );
 
+-- nombres (la clave es el nombre normalizado: sin tildes ni mayúsculas)
+create table if not exists profiles (
+  key text primary key check (key ~ '^[a-z0-9._-]{3,20}$'),
+  username text not null check (char_length(username) between 1 and 24),
+  created_at timestamptz not null default now()
+);
+
+-- qué dispositivo (sesión anónima) va con qué nombre
+create table if not exists profile_devices (
+  auth_uid uuid primary key,
+  key text not null references profiles(key) on delete cascade,
+  linked_at timestamptz not null default now()
+);
+
 create table if not exists players (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references rooms(id) on delete cascade,
-  auth_uid uuid not null default auth.uid(),
+  username_key text not null references profiles(key),
   name text not null check (char_length(name) between 1 and 24),
   created_at timestamptz not null default now(),
-  unique (room_id, auth_uid)
+  unique (room_id, username_key)
 );
 
 create table if not exists items (
@@ -62,22 +78,27 @@ create table if not exists votes (
 );
 
 -- ---------- helpers ----------
+create or replace function my_key() returns text
+language sql stable security definer set search_path = public as $$
+  select key from profile_devices where auth_uid = auth.uid();
+$$;
+
 create or replace function is_member(p_room uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from players where room_id = p_room and auth_uid = auth.uid());
+  select exists (select 1 from players where room_id = p_room and username_key = my_key());
 $$;
 
 create or replace function is_referee(p_room uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from rooms r join players p on p.id = r.referee_id
-    where r.id = p_room and p.auth_uid = auth.uid()
+    where r.id = p_room and p.username_key = my_key()
   );
 $$;
 
 create or replace function owns_player(p_player uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from players where id = p_player and auth_uid = auth.uid());
+  select exists (select 1 from players where id = p_player and username_key = my_key());
 $$;
 
 -- ---------- RLS ----------
@@ -104,9 +125,36 @@ create policy "referee updates room" on rooms for update to authenticated
   using (is_referee(id) or (referee_id is null and is_member(id)))
   with check (true);
 
--- Jugadores: te creas a ti mismo
+-- Jugadores: te apuntas tú, con tu nombre
 drop policy if exists "join" on players;
-create policy "join" on players for insert to authenticated with check (auth_uid = auth.uid());
+create policy "join" on players for insert to authenticated with check (username_key = my_key());
+
+-- Nombres: se leen; cada dispositivo ve solo su vínculo. Se escriben por claim_username().
+alter table profiles enable row level security;
+alter table profile_devices enable row level security;
+drop policy if exists "read profiles" on profiles;
+create policy "read profiles" on profiles for select to authenticated using (true);
+drop policy if exists "own device" on profile_devices;
+create policy "own device" on profile_devices for select to authenticated using (auth_uid = auth.uid());
+
+-- Vincula este dispositivo a un nombre (lo crea si no existe)
+create or replace function claim_username(p_key text, p_name text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Sin sesión'; end if;
+  insert into profiles (key, username) values (p_key, p_name)
+    on conflict (key) do update set username = excluded.username;
+  insert into profile_devices (auth_uid, key) values (auth.uid(), p_key)
+    on conflict (auth_uid) do update set key = excluded.key, linked_at = now();
+end $$;
+
+-- "No soy yo": desvincula este dispositivo
+create or replace function release_username() returns void
+language sql security definer set search_path = public as $$
+  delete from profile_devices where auth_uid = auth.uid();
+$$;
+grant execute on function claim_username(text, text) to authenticated;
+grant execute on function release_username() to authenticated;
 
 -- Eventos: los miembros añaden; borra quien lo creó (antes de empezar) o el árbitro
 drop policy if exists "add items" on items;

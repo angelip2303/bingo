@@ -3,7 +3,8 @@
  * pestañas con BroadcastChannel. Sirve para probar sin Supabase: cada pestaña
  * es un jugador distinto (la identidad va en sessionStorage).
  */
-import type { Backend, NewItem } from './api';
+import type { Account, Backend, NewItem } from './api';
+import { usernameKey } from '../lib/account';
 import { randomCode } from './api';
 import type { Card, Claim, Item, Player, Result, Room, Snapshot, Vote } from '../types';
 
@@ -15,10 +16,12 @@ interface DB {
   claims: Claim[];
   votes: Vote[];
   results: Result[];
+  /** nombres registrados (el nombre es la identidad) */
+  users: { id: string; key: string; username: string }[];
 }
 
 const KEY = 'bingo-salvaje-local-db';
-const empty = (): DB => ({ rooms: [], players: [], items: [], cards: [], claims: [], votes: [], results: [] });
+const empty = (): DB => ({ rooms: [], players: [], items: [], cards: [], claims: [], votes: [], results: [], users: [] });
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -29,12 +32,14 @@ function safeSet(storage: Storage, key: string, value: string) {
   try { storage.setItem(key, value); } catch { /* modo privado, sin persistencia */ }
 }
 
-function deviceId(): string {
-  let id = safeGet(sessionStorage, 'bingo-device');
-  if (!id) {
-    id = uid();
-    safeSet(sessionStorage, 'bingo-device', id);
-  }
+/** Sesión por pestaña (sessionStorage) para poder simular varios jugadores a la vez. */
+const SESSION = 'bingo-user';
+function sessionUserId(): string | null {
+  return safeGet(sessionStorage, SESSION);
+}
+function requireUser(): string {
+  const id = sessionUserId();
+  if (!id) throw new Error('Inicia sesión primero');
   return id;
 }
 
@@ -57,15 +62,44 @@ export function createLocalBackend(): Backend {
   };
   const strip = ({ device: _d, ...p }: Player & { device: string }): Player => p;
 
+  const account = (u: DB['users'][number]): Account => ({ id: u.id, username: u.username });
+  const myName = () => {
+    const id = requireUser();
+    return read().users.find((u) => u.id === id)?.username ?? '¿?';
+  };
+
   const api: Backend = {
     mode: 'local',
 
-    async createRoom({ name, candidates, boardSize, playerName, seedItems }) {
+    async currentUser() {
+      const id = sessionUserId();
+      const u = id ? read().users.find((x) => x.id === id) : null;
+      return u ? account(u) : null;
+    },
+
+    async signIn(username) {
+      const key = usernameKey(username);
+      let u = read().users.find((x) => x.key === key);
+      if (!u) {
+        u = { id: uid(), key, username: username.trim() };
+        const nu = u;
+        write((db) => db.users.push(nu));
+      }
+      safeSet(sessionStorage, SESSION, u.id);
+      return account(u);
+    },
+
+    async signOut() {
+      try { sessionStorage.removeItem(SESSION); } catch { /* nada */ }
+    },
+
+    async createRoom({ name, candidates, boardSize, seedItems }) {
+      const playerName = myName();
       const room: Room = {
         id: uid(), code: randomCode(), name, status: 'lobby', board_size: boardSize,
         candidates, referee_id: null, created_at: now(),
       };
-      const player = { id: uid(), room_id: room.id, name: playerName, created_at: now(), device: deviceId() };
+      const player = { id: uid(), room_id: room.id, name: playerName, created_at: now(), device: requireUser() };
       room.referee_id = player.id;
       write((db) => {
         db.rooms.push(room);
@@ -83,16 +117,17 @@ export function createLocalBackend(): Backend {
     },
 
     async me(roomId) {
-      const p = read().players.find((x) => x.room_id === roomId && x.device === deviceId());
+      const p = read().players.find((x) => x.room_id === roomId && x.device === sessionUserId());
       return p ? strip(p) : null;
     },
 
-    async joinRoom(code, playerName) {
+    async joinRoom(code) {
+      const playerName = myName();
       const room = await api.findRoom(code);
       if (!room) throw new Error('No existe ninguna sala con ese código');
       const existing = await api.me(room.id);
       if (existing) return { room, player: existing };
-      const player = { id: uid(), room_id: room.id, name: playerName, created_at: now(), device: deviceId() };
+      const player = { id: uid(), room_id: room.id, name: playerName, created_at: now(), device: requireUser() };
       write((db) => db.players.push(player));
       return { room, player: strip(player) };
     },

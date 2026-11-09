@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { backend } from './backend';
 import type { Player, Room } from './types';
-import Home, { JoinForm } from './components/Home';
+import Home, { LoginForm } from './components/Home';
 import RoomScreen from './components/RoomScreen';
 
 function parseHash(): string | null {
@@ -25,33 +25,43 @@ export default function App() {
     <>
       {backend.mode === 'local' && (
         <div className="local-banner" role="status">
-          Modo local: sin servidor, solo funciona en este navegador. Abre otra pestaña para simular a otro jugador.
+          Modo local de desarrollo: sin servidor. Cada pestaña es un jugador distinto.
         </div>
       )}
-      {code ? <RoomGate key={code} code={code} /> : <Home />}
+      {backend.mode === 'local' && import.meta.env.PROD
+        ? (
+          <main className="page narrow">
+            <h1 className="display">Falta configurar Supabase</h1>
+            <p className="muted">Esta versión se ha publicado sin VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY. Añádelas en GitHub (Settings → Secrets and variables → Actions → Variables) y vuelve a desplegar.</p>
+          </main>
+        )
+        : code ? <RoomGate key={code} code={code} /> : <Home />}
     </>
   );
 }
 
 function RoomGate({ code }: { code: string }) {
   const [state, setState] = useState<
-    { s: 'loading' } | { s: 'missing' } | { s: 'error'; msg: string } | { s: 'join'; room: Room } | { s: 'in'; room: Room; me: Player }
+    { s: 'loading' } | { s: 'login' } | { s: 'missing' } | { s: 'error'; msg: string } | { s: 'in'; room: Room; me: Player }
   >({ s: 'loading' });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const room = await backend.findRoom(code);
-        if (!room) return setState({ s: 'missing' });
-        const me = await backend.me(room.id);
-        setState(me ? { s: 'in', room, me } : { s: 'join', room });
-      } catch (e) {
-        setState({ s: 'error', msg: (e as Error).message });
-      }
-    })();
-  }, [code]);
+  const enter = async () => {
+    setState({ s: 'loading' });
+    try {
+      if (!(await backend.currentUser())) return setState({ s: 'login' });
+      const room = await backend.findRoom(code);
+      if (!room) return setState({ s: 'missing' });
+      // con cuenta no hay nada que preguntar: si no estabas en la sala, entras
+      const me = (await backend.me(room.id)) ?? (await backend.joinRoom(code)).player;
+      setState({ s: 'in', room, me });
+    } catch (e) {
+      setState({ s: 'error', msg: (e as Error).message });
+    }
+  };
+  useEffect(() => { enter(); }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (state.s === 'loading') return <div className="center-screen"><div className="spinner" aria-label="Cargando" /></div>;
+  if (state.s === 'login') return <LoginForm tag={`Sala ${code}`} onDone={() => enter()} />;
   if (state.s === 'missing' || state.s === 'error')
     return (
       <main className="page narrow">
@@ -60,7 +70,5 @@ function RoomGate({ code }: { code: string }) {
         <button className="btn" onClick={() => goToRoom(null)}>Volver al inicio</button>
       </main>
     );
-  if (state.s === 'join')
-    return <JoinForm room={state.room} onJoined={(me) => setState({ s: 'in', room: state.room, me })} />;
   return <RoomScreen roomId={state.room.id} me={state.me} />;
 }

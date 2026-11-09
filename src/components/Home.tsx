@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { backend } from '../backend';
 import { goToRoom } from '../App';
 import { seedItems } from '../lib/suggestions';
 import { hallOfFame, type FameRow } from '../lib/history';
-import type { Candidate, Player, Room } from '../types';
+import type { Candidate } from '../types';
+import type { Account } from '../backend/api';
+import { validateUsername } from '../lib/account';
 import { CandTag, Screen } from './shared';
 
 export const DEFAULT_CANDIDATES: Candidate[] = [
@@ -13,49 +15,81 @@ export const DEFAULT_CANDIDATES: Candidate[] = [
   { name: 'Colau', party: 'Frente Amplio', color: '#d8256f' },
 ];
 
-const NAME_KEY = 'bingo-salvaje-name';
-export const savedName = () => { try { return localStorage.getItem(NAME_KEY) ?? ''; } catch { return ''; } };
-const saveName = (n: string) => { try { localStorage.setItem(NAME_KEY, n); } catch { /* sin persistencia */ } };
+/** Cabecera común: piloto, título y los cuatro candidatos. */
+function Masthead({ tag = 'En directo' }: { tag?: string }) {
+  return (
+    <header className="home-head">
+      <span className="onair"><i aria-hidden /> {tag}</span>
+      <h1 className="display huge">Bingo<br />Salvaje</h1>
+      <div className="cand-row">
+        {DEFAULT_CANDIDATES.map((c, i) => <CandTag key={c.name} index={i} candidates={DEFAULT_CANDIDATES} size="lg" />)}
+      </div>
+    </header>
+  );
+}
 
 /**
- * Una sola pantalla: tu nombre arriba y debajo las dos salidas (código o crear).
- * Time to smile: escribir nombre + un toque.
+ * Solo tu nombre. El mismo nombre en el ordenador y en el móvil = el mismo jugador,
+ * así preparas el cartón días antes y juegas con el móvil. El dispositivo lo recuerda.
  */
+export function LoginForm({ onDone, tag }: { onDone: (a: Account) => void; tag?: string }) {
+  const [username, setUsername] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const v = validateUsername(username);
+    if (v) return setErr(v);
+    setBusy(true); setErr(null);
+    try { onDone(await backend.signIn(username)); }
+    catch (e) { setErr((e as Error).message); setBusy(false); }
+  }
+
+  return (
+    <main className="page narrow home">
+      <Masthead tag={tag} />
+      <form className="panel stack" onSubmit={submit}>
+        <label className="field"><span>Tu nombre</span>
+          <input value={username} onChange={(e) => { setUsername(e.target.value); setErr(null); }} maxLength={20} autoFocus
+            autoComplete="nickname" autoCorrect="off" spellCheck={false} placeholder="Cómo te verán los demás" />
+        </label>
+        {err && <p className="error" role="alert">{err}</p>}
+        <button className="btn big" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <p className="muted small center">Pon el mismo nombre en el ordenador y en el móvil y serás tú en los dos.</p>
+      </form>
+    </main>
+  );
+}
+
+/** Inicio: con sesión, entrar por código o crear sala. Sin sesión, el acceso. */
 export default function Home() {
-  const [name, setName] = useState(savedName);
+  const [account, setAccount] = useState<Account | null | undefined>(undefined);
+  useEffect(() => { backend.currentUser().then(setAccount).catch(() => setAccount(null)); }, []);
+  if (account === undefined) return <div className="center-screen"><div className="spinner" aria-label="Cargando" /></div>;
+  if (!account) return <LoginForm onDone={setAccount} />;
+  return <Lobby account={account} onSignOut={async () => { await backend.signOut(); setAccount(null); }} />;
+}
+
+function Lobby({ account, onSignOut }: { account: Account; onSignOut: () => void }) {
   const [code, setCode] = useState('');
   const [size, setSize] = useState(4);
   const [busy, setBusy] = useState<'join' | 'create' | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const hasName = name.trim().length > 0;
-
-  const needName = () => {
-    if (hasName) return false;
-    setErr('Pon tu nombre primero');
-    nameRef.current?.focus();
-    return true;
-  };
 
   async function join(e?: React.FormEvent) {
     e?.preventDefault();
-    if (needName() || code.length < 5) return;
+    if (code.length < 5) return;
     setBusy('join'); setErr(null);
-    try {
-      saveName(name.trim());
-      await backend.joinRoom(code, name.trim());
-      goToRoom(code);
-    } catch (e) { setErr((e as Error).message); setBusy(null); }
+    try { await backend.joinRoom(code); goToRoom(code); }
+    catch (e) { setErr((e as Error).message); setBusy(null); }
   }
 
   async function create() {
-    if (needName()) return;
     setBusy('create'); setErr(null);
     try {
-      saveName(name.trim());
       const { room } = await backend.createRoom({
-        name: 'Debate del 29N', candidates: DEFAULT_CANDIDATES, boardSize: size,
-        playerName: name.trim(), seedItems: seedItems(DEFAULT_CANDIDATES),
+        name: 'Debate del 29N', candidates: DEFAULT_CANDIDATES, boardSize: size, seedItems: seedItems(DEFAULT_CANDIDATES),
       });
       goToRoom(room.code);
     } catch (e) { setErr((e as Error).message); setBusy(null); }
@@ -63,21 +97,12 @@ export default function Home() {
 
   return (
     <main className="page narrow home">
-      <header className="home-head">
-        <span className="onair"><i aria-hidden /> En directo</span>
-        <h1 className="display huge">Bingo<br />Salvaje</h1>
-        <div className="cand-row">
-          {DEFAULT_CANDIDATES.map((c, i) => <CandTag key={c.name} index={i} candidates={DEFAULT_CANDIDATES} size="lg" />)}
-        </div>
-      </header>
-
+      <Masthead />
       <div className="panel stack">
-        <label className="field"><span>Tu nombre</span>
-          <input
-            ref={nameRef} value={name} maxLength={24} placeholder="Cómo te verán los demás" autoComplete="nickname"
-            onChange={(e) => { setName(e.target.value); setErr(null); }}
-          />
-        </label>
+        <div className="whoami">
+          <span>Hola, <b>{account.username}</b></span>
+          <button className="link-btn" onClick={onSignOut}>No soy yo</button>
+        </div>
 
         <form className="join-row" onSubmit={join}>
           <input
@@ -104,52 +129,7 @@ export default function Home() {
       </div>
 
       <p className="muted small home-foot">Quien crea la sala es el árbitro.</p>
-
       <HallOfFame />
-    </main>
-  );
-}
-
-/**
- * Llegas por enlace. Si este móvil ya sabe tu nombre entras directo;
- * si no, solo te lo pide a ti.
- */
-export function JoinForm({ room, onJoined }: { room: Room; onJoined: (p: Player) => void }) {
-  const [name, setName] = useState(savedName);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const go = async (n: string) => {
-    setBusy(true); setErr(null);
-    try {
-      saveName(n);
-      const { player } = await backend.joinRoom(room.code, n);
-      onJoined(player);
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
-  };
-
-  const auto = useRef(false);
-  useEffect(() => {
-    const n = savedName().trim();
-    if (n && !auto.current) { auto.current = true; go(n); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (busy && !err) return <div className="center-screen"><div className="spinner" aria-label="Entrando" /></div>;
-
-  return (
-    <main className="page narrow home">
-      <header className="home-head">
-        <span className="onair"><i aria-hidden /> Sala {room.code}</span>
-        <h1 className="display big">{room.name}</h1>
-      </header>
-      <form className="panel stack" onSubmit={(e) => { e.preventDefault(); if (name.trim()) go(name.trim()); }}>
-        <label className="field"><span>Tu nombre</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={24} required autoFocus autoComplete="nickname" />
-        </label>
-        {err && <p className="error" role="alert">{err}</p>}
-        <button className="btn big" disabled={busy || !name.trim()}>Entrar a jugar</button>
-      </form>
     </main>
   );
 }

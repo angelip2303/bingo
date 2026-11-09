@@ -5,18 +5,29 @@ export interface NewItem {
   candidate: number | null;
 }
 
+export interface Account {
+  id: string;
+  username: string;
+}
+
 export interface Backend {
   readonly mode: 'local' | 'supabase';
+
+  /** Cuenta con sesión abierta en este dispositivo */
+  currentUser(): Promise<Account | null>;
+  /** Entra con tu nombre: el mismo nombre en otro dispositivo es el mismo jugador */
+  signIn(username: string): Promise<Account>;
+  signOut(): Promise<void>;
+
   createRoom(input: {
     name: string;
     candidates: Candidate[];
     boardSize: number;
-    playerName: string;
     seedItems: NewItem[];
   }): Promise<{ room: Room; player: Player }>;
-  /** Entra a la sala; si ya estabas (mismo dispositivo) te devuelve tu jugador */
-  joinRoom(code: string, playerName: string): Promise<{ room: Room; player: Player }>;
-  /** Jugador de este dispositivo en la sala, si existe */
+  /** Entra a la sala con tu cuenta; si ya estabas te devuelve tu jugador */
+  joinRoom(code: string): Promise<{ room: Room; player: Player }>;
+  /** Tu jugador en la sala (con tu cuenta, desde cualquier dispositivo), si existe */
   me(roomId: string): Promise<Player | null>;
   findRoom(code: string): Promise<Room | null>;
   snapshot(roomId: string): Promise<Snapshot>;
