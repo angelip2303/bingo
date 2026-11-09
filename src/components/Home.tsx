@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { backend } from '../backend';
 import { goToRoom } from '../App';
 import { seedItems } from '../lib/suggestions';
+import { hallOfFame, type FameRow } from '../lib/history';
 import type { Candidate, Player, Room } from '../types';
-import { CandTag } from './shared';
+import { CandTag, Screen } from './shared';
 
 export const DEFAULT_CANDIDATES: Candidate[] = [
   { name: 'Sánchez', party: 'PSOE', color: '#e30613' },
@@ -102,7 +103,9 @@ export default function Home() {
         {err && <p className="error" role="alert">{err}</p>}
       </div>
 
-      <p className="muted small">Quien crea la sala es el árbitro. Comparte el código o el enlace con el resto.</p>
+      <p className="muted small home-foot">Quien crea la sala es el árbitro.</p>
+
+      <HallOfFame />
     </main>
   );
 }
@@ -148,5 +151,45 @@ export function JoinForm({ room, onJoined }: { room: Room; onJoined: (p: Player)
         <button className="btn big" disabled={busy || !name.trim()}>Entrar a jugar</button>
       </form>
     </main>
+  );
+}
+
+/** Histórico de todas las partidas terminadas. Solo aparece si hay alguna. */
+function HallOfFame() {
+  const [rows, setRows] = useState<FameRow[] | null>(null);
+  const [games, setGames] = useState(0);
+  useEffect(() => {
+    backend.listResults()
+      .then((r) => { setRows(hallOfFame(r)); setGames(new Set(r.map((x) => x.room_id)).size); })
+      .catch(() => setRows([]));
+  }, []);
+  const [open, setOpen] = useState(false);
+  if (!rows?.length) return null;
+  if (!open) {
+    return (
+      <button className="btn ghost fame-open" onClick={() => setOpen(true)}>
+        Salón de la fama <span className="muted">· {games} {games === 1 ? 'partida' : 'partidas'}</span>
+      </button>
+    );
+  }
+  return (
+    <Screen title="Salón de la fama" onClose={() => setOpen(false)}>
+    <section className="fame">
+      <span className="block-label">{games} {games === 1 ? 'partida' : 'partidas'} · se agrupa por nombre</span>
+      <ol className="fame-list">
+        {rows.slice(0, 10).map((r, i) => (
+          <li key={r.name}>
+            <span className="fame-pos display">{i + 1}</span>
+            <div className="fame-main">
+              <b>{r.name}</b>
+              <span>{r.games} {r.games === 1 ? 'partida' : 'partidas'} · {r.podiums} {r.podiums === 1 ? 'podio' : 'podios'} · mejor {r.best}</span>
+            </div>
+            <div className="fame-wins"><b className="display num">{r.wins}</b><span>{r.wins === 1 ? 'victoria' : 'victorias'}</span></div>
+            <div className="fame-pts"><b className="display num">{r.points}</b><span>puntos</span></div>
+          </li>
+        ))}
+      </ol>
+    </section>
+    </Screen>
   );
 }

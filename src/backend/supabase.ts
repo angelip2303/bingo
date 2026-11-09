@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Backend } from './api';
 import { randomCode } from './api';
-import type { Item, Player, Room } from '../types';
+import type { Item, Player, Result, Room } from '../types';
 
 export function createSupabaseBackend(url: string, key: string): Backend {
   const sb: SupabaseClient = createClient(url, key);
@@ -161,6 +161,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
 
     async updateCandidates(roomId, candidates) {
       ok(await sb.from('rooms').update({ candidates }).eq('id', roomId));
+    },
+
+    async saveResults(roomId, results) {
+      ok(await sb.rpc('save_results', { p_room: roomId, p_results: results }));
+    },
+
+    async listResults() {
+      await ensureSession();
+      return ok(await sb.from('results').select().order('finished_at', { ascending: false }).limit(500)) as Result[];
     },
   };
   return api;

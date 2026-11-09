@@ -54,8 +54,14 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
   const panelOpen = live && (browsing || (wide && isReferee));
   const pinned = wide && isReferee;
   const openButton = live && !panelOpen && (
-    <button className={`btn big ${isReferee ? 'hot' : 'ghost'}`} onClick={() => setBrowsing(true)}>
-      {isReferee ? 'Pitar' : 'Cantar algo que no está en tu cartón'}
+    <button className={`btn big ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)}>
+      {isReferee ? 'Pitar' : 'Cantar un evento'}
+    </button>
+  );
+  // botón flotante: siempre a mano sin ocupar sitio en la lista
+  const fab = live && !panelOpen && (
+    <button className={`fab ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)} aria-label={isReferee ? 'Pitar un evento' : 'Cantar un evento'}>
+      {isReferee ? 'Pitar' : 'Cantar'}
     </button>
   );
   const empty = pending.length === 0 && timeline.length === 0;
@@ -72,16 +78,7 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
           </div>
         ) : (
           <>
-            <div className="view-head">
-              <h2 className="display">En revisión</h2>
-              <span className="muted small">Árbitro: <b>{referee?.name ?? 'nadie'}</b></span>
-            </div>
-            {pending.length === 0 ? (
-              <p className="empty-line">Nada en revisión. Canta desde tu cartón o desde aquí.</p>
-            ) : (
-              <ul className="claims">{pending.map((c) => <ClaimRow key={c.id} claim={c} ctx={ctx} />)}</ul>
-            )}
-            {openButton}
+            {pending.length > 0 && <VarCheck claims={pending} ctx={ctx} />}
 
             <div className="view-head timeline-head">
               <h2 className="display">Lo que ha pasado</h2>
@@ -106,6 +103,7 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
                 ))}
               </ol>
             )}
+            {fab}
           </>
         )}
       </div>
@@ -189,6 +187,28 @@ function WhistlePanel({ ctx, referee, onClose }: { ctx: RoomCtx; referee: boolea
   );
 }
 
+/** Recuadro "VAR revisando": un cante cada vez, flechas si hay cola. */
+function VarCheck({ claims, ctx }: { claims: Claim[]; ctx: RoomCtx }) {
+  const [i, setI] = useState(0);
+  const idx = Math.min(i, claims.length - 1);
+  return (
+    <section className="var-check" aria-label="VAR revisando">
+      <div className="vc-head">
+        <span className="vc-badge">VAR</span>
+        <span className="vc-title">Revisando</span>
+        {claims.length > 1 && (
+          <span className="vc-nav">
+            <button className="icon-btn" onClick={() => setI(Math.max(0, idx - 1))} disabled={idx === 0} aria-label="Cante anterior">◀</button>
+            <b className="num">{idx + 1}/{claims.length}</b>
+            <button className="icon-btn" onClick={() => setI(Math.min(claims.length - 1, idx + 1))} disabled={idx === claims.length - 1} aria-label="Cante siguiente">▶</button>
+          </span>
+        )}
+      </div>
+      <ClaimRow claim={claims[idx]} ctx={ctx} />
+    </section>
+  );
+}
+
 function ClaimRow({ claim, ctx }: { claim: Claim; ctx: RoomCtx }) {
   const { snap, me, isReferee, run } = ctx;
   const item = snap.items.find((i) => i.id === claim.item_id);
@@ -200,7 +220,7 @@ function ClaimRow({ claim, ctx }: { claim: Claim; ctx: RoomCtx }) {
   if (!item) return null;
 
   return (
-    <li className="claim pending">
+    <div className="claim pending">
       <div className="claim-top">
         <CandTag index={item.candidate} candidates={snap.room.candidates} />
         <span className="muted small">{who} canta · {hhmm(claim.created_at)}</span>
@@ -222,6 +242,6 @@ function ClaimRow({ claim, ctx }: { claim: Claim; ctx: RoomCtx }) {
           <button className="btn yellow" onClick={() => run(() => backend.resolveClaim(claim.id, false))}>Tarjeta amarilla</button>
         </div>
       )}
-    </li>
+    </div>
   );
 }

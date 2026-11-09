@@ -1,4 +1,4 @@
-import type { Candidate, Item, Player, Room, RoomStatus, Snapshot } from '../types';
+import type { Candidate, Item, Player, Result, Room, RoomStatus, Snapshot } from '../types';
 
 export interface NewItem {
   text: string;
@@ -36,6 +36,11 @@ export interface Backend {
   resolveClaim(claimId: string, accept: boolean): Promise<void>;
   setHappened(itemId: string, happened: boolean): Promise<void>;
   updateCandidates(roomId: string, candidates: Candidate[]): Promise<void>;
+  /** guarda (o reemplaza) la clasificación final de la sala */
+  saveResults(roomId: string, results: Omit<Result, 'room_id' | 'finished_at'>[]): Promise<void>;
+
+  /** histórico de todas las partidas terminadas */
+  listResults(): Promise<Result[]>;
 }
 
 export function randomCode(): string {

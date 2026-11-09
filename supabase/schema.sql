@@ -164,6 +164,32 @@ end $$;
 grant execute on function resolve_claim(uuid, boolean) to authenticated;
 grant execute on function set_happened(uuid, boolean) to authenticated;
 
+-- ---------- histórico ----------
+create table if not exists results (
+  room_id uuid not null references rooms(id) on delete cascade,
+  room_name text not null,
+  player_name text not null,
+  points int not null,
+  position int not null,
+  finished_at timestamptz not null default now(),
+  primary key (room_id, player_name)
+);
+alter table results enable row level security;
+drop policy if exists "read results" on results;
+create policy "read results" on results for select to authenticated using (true);
+
+-- el árbitro guarda la clasificación final (reemplaza la anterior si se reabre y se vuelve a cerrar)
+create or replace function save_results(p_room uuid, p_results jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_referee(p_room) then raise exception 'Solo el árbitro puede cerrar la partida'; end if;
+  delete from results where room_id = p_room;
+  insert into results (room_id, room_name, player_name, points, position)
+    select p_room, r.room_name, r.player_name, r.points, r.position
+    from jsonb_to_recordset(p_results) as r(room_name text, player_name text, points int, position int);
+end $$;
+grant execute on function save_results(uuid, jsonb) to authenticated;
+
 -- ---------- tiempo real ----------
 do $$
 declare t text;

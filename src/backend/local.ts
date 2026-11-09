@@ -5,7 +5,7 @@
  */
 import type { Backend, NewItem } from './api';
 import { randomCode } from './api';
-import type { Card, Claim, Item, Player, Room, Snapshot, Vote } from '../types';
+import type { Card, Claim, Item, Player, Result, Room, Snapshot, Vote } from '../types';
 
 interface DB {
   rooms: Room[];
@@ -14,10 +14,11 @@ interface DB {
   cards: Card[];
   claims: Claim[];
   votes: Vote[];
+  results: Result[];
 }
 
 const KEY = 'bingo-salvaje-local-db';
-const empty = (): DB => ({ rooms: [], players: [], items: [], cards: [], claims: [], votes: [] });
+const empty = (): DB => ({ rooms: [], players: [], items: [], cards: [], claims: [], votes: [], results: [] });
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
@@ -196,6 +197,17 @@ export function createLocalBackend(): Backend {
 
     async updateCandidates(roomId, candidates) {
       write((db) => { db.rooms.find((r) => r.id === roomId)!.candidates = candidates; });
+    },
+
+    async saveResults(roomId, results) {
+      write((db) => {
+        db.results = db.results.filter((r) => r.room_id !== roomId);
+        db.results.push(...results.map((r) => ({ ...r, room_id: roomId, finished_at: now() })));
+      });
+    },
+
+    async listResults() {
+      return read().results;
     },
   };
   return api;

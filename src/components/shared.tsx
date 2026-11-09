@@ -3,6 +3,7 @@ import { backend } from '../backend';
 import { itemBody, itemText } from '../lib/suggestions';
 import type { Candidate, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
+import FitText from './FitText';
 
 const brokenLogos = new Set<string>();
 
@@ -85,8 +86,8 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 export function CellFace({ item, candidates }: { item: Pick<Item, 'text' | 'candidate'>; candidates: Candidate[] }) {
   return (
     <>
-      {item.candidate != null && <span className="cell-tag"><CandTag index={item.candidate} candidates={candidates} size="sm" /></span>}
-      <span className="cell-text">{itemBody(item, candidates)}</span>
+      <span className="cell-tag"><CandTag index={item.candidate} candidates={candidates} size="sm" /></span>
+      <FitText className="cell-text">{itemBody(item, candidates)}</FitText>
     </>
   );
 }

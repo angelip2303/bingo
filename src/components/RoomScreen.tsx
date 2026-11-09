@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { computeScores } from '../lib/scoring';
+import { computeScores, type PlayerScore } from '../lib/scoring';
 import { itemText } from '../lib/suggestions';
 import { useRoom, vibrate } from '../lib/useRoom';
 import type { Player, Snapshot } from '../types';
@@ -19,6 +19,7 @@ export interface RoomCtx {
   isReferee: boolean;
   reload: () => void;
   run: (fn: () => Promise<unknown>) => Promise<void>;
+  scores: PlayerScore[];
 }
 
 interface Toast { id: number; text: string; tone: 'info' | 'good' | 'bad' }
@@ -57,7 +58,7 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
   }
 
   const isReferee = snap.room.referee_id === me.id;
-  const ctx: RoomCtx = { snap, me, isReferee, reload, run };
+  const ctx: RoomCtx = { snap, me, isReferee, reload, run, scores: scoring!.scores };
   const pending = snap.claims.filter((c) => c.status === 'pending').length;
   const live = snap.room.status === 'live';
   const statusLabel = live ? 'En directo' : snap.room.status === 'lobby' ? 'Preparando' : 'Terminado';

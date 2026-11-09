@@ -68,6 +68,16 @@ export interface Vote {
   value: boolean;
 }
 
+/** Clasificación final de una partida, para el histórico */
+export interface Result {
+  room_id: string;
+  room_name: string;
+  player_name: string;
+  points: number;
+  position: number;
+  finished_at: string;
+}
+
 export interface Snapshot {
   room: Room;
   players: Player[];

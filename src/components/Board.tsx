@@ -6,12 +6,15 @@ import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import { CellFace, Screen } from './shared';
+import { STICKERS, firstGrapheme, useSticker } from '../lib/sticker';
 
 export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
   const { snap, me, run } = ctx;
   const n = snap.room.board_size;
   const card = snap.cards.find((c) => c.player_id === me.id);
   const [asking, setAsking] = useState<Item | null>(null);
+  const [sticker, setSticker] = useSticker();
+  const [picking, setPicking] = useState(false);
 
   if (!card || card.cells.length !== n * n || card.cells.some((id) => !snap.items.some((i) => i.id === id))) {
     return (
@@ -57,16 +60,22 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
                 aria-label={`${itemText(it, snap.room.candidates)}${done ? ', ha pasado' : pending ? ', en el VAR' : ''}`}
               >
                 <CellFace item={it} candidates={snap.room.candidates} />
-                {done && <i className="stamp" aria-hidden>Sí</i>}
+                {done && (sticker === 'SÍ'
+                  ? <i className="stamp" aria-hidden>Sí</i>
+                  : <i className="sticker" aria-hidden style={{ '--rot': `${((i * 37) % 31) - 15}deg` } as React.CSSProperties}>{sticker}</i>)}
                 {pending && !done && <i className="var-tag" aria-hidden>VAR</i>}
               </button>
             );
           })}
         </div>
       </div>
-      <p className="board-hint">
-        {finished ? 'La partida ha terminado.' : 'Toca una casilla cuando pase para cantarla.'}
-      </p>
+      <div className="board-foot">
+        <p className="board-hint">{finished ? 'La partida ha terminado.' : 'Toca una casilla cuando pase para cantarla.'}</p>
+        <button className="sticker-btn" onClick={() => setPicking(true)} aria-label="Cambiar tu sello">
+          <span className={sticker === 'SÍ' ? 'mini-stamp' : ''}>{sticker}</span> Tu sello
+        </button>
+      </div>
+      {picking && <StickerPicker value={sticker} onPick={(s) => { setSticker(s); setPicking(false); }} onClose={() => setPicking(false)} />}
 
       {asking && (
         <Screen title="¿Ha pasado?" onClose={() => setAsking(null)}>
@@ -111,6 +120,30 @@ function ScoreBug({ rank, players, points, cells, total, lines, nextLine, bingo 
         <div className="sb-row"><span>{lines} {lines === 1 ? 'línea' : 'líneas'}</span><b className="num">{cells}/{total}</b></div>
         <span className="sb-bar"><i style={{ width: `${(cells / total) * 100}%` }} /></span>
         {hint && <span className={`sb-hint ${nextLine === 1 || bingo ? 'hot' : ''}`}>{hint}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Elegir el sello con el que marcas tus casillas. */
+function StickerPicker({ value, onPick, onClose }: { value: string; onPick: (s: string) => void; onClose: () => void }) {
+  const [custom, setCustom] = useState('');
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="stk-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="stk-title" className="display">Tu sello</h2>
+        <p>Así se marcan tus casillas cuando pasan. Solo lo ves tú.</p>
+        <div className="sticker-grid">
+          {STICKERS.map((s) => (
+            <button key={s} className={`sticker-opt ${s === 'SÍ' ? 'classic' : ''}`} aria-pressed={value === s} onClick={() => onPick(s)} aria-label={s === 'SÍ' ? 'Sello clásico SÍ' : s}>
+              {s === 'SÍ' ? <span className="mini-stamp">Sí</span> : s}
+            </button>
+          ))}
+        </div>
+        <form className="sticker-custom" onSubmit={(e) => { e.preventDefault(); const g = firstGrapheme(custom); if (g) onPick(g); }}>
+          <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="O pon el tuyo 🫡" aria-label="Tu propio emoji" maxLength={16} />
+          <button className="btn" disabled={!firstGrapheme(custom)}>Usar</button>
+        </form>
       </div>
     </div>
   );
