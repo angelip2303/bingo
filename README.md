@@ -15,7 +15,8 @@ Puntos: +1 por casilla, +5 por línea, +3 a la primera línea, +20 por bingo, +1
 
 ```bash
 npm install
-npm run dev      # sin .env.local arranca en modo local de desarrollo (cada pestaña = un jugador)
+cp .env.example .env.local   # y rellena la URL y la clave publishable de Supabase
+npm run dev
 npm test
 ```
 
@@ -32,11 +33,11 @@ npx supabase db push                       # aplica las migraciones pendientes
 En el dashboard: **Authentication → Sign In / Providers → Allow anonymous sign-ins** activado.
 No hay registro: cada uno pone su nombre. El mismo nombre en el ordenador y en el móvil es el mismo jugador.
 
-Para la app: **Project Settings → API**, copia la URL y la clave `anon` a `.env.local` (ver `.env.example`).
-La clave `anon` es pública por diseño; la seguridad la ponen las políticas RLS de la migración.
+Para la app: **Project Settings → API Keys**, copia la URL y la clave **publishable** a `.env.local` (ver `.env.example`).
+La clave publishable es pública por diseño; la seguridad la ponen las políticas RLS de las migraciones.
 
 ## Despliegue (GitHub Pages)
 
 1. En el repo: **Settings → Pages → Source: GitHub Actions**.
-2. **Settings → Secrets and variables → Actions → Variables**: crea `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+2. **Settings → Secrets and variables → Actions → Variables**: crea `VITE_SUPABASE_URL` y `VITE_SUPABASE_KEY` (la clave publishable).
 3. Cada push a `main` despliega.

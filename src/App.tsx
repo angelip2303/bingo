@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { backend } from './backend';
+import { backend, configMissing } from './backend';
 import type { Player, Room } from './types';
 import Home, { LoginForm } from './components/Home';
 import RoomScreen from './components/RoomScreen';
@@ -30,16 +30,11 @@ export default function App() {
 
   return (
     <>
-      {backend.mode === 'local' && (
-        <div className="local-banner" role="status">
-          Modo local de desarrollo: sin servidor. Cada pestaña es un jugador distinto.
-        </div>
-      )}
-      {backend.mode === 'local' && import.meta.env.PROD
+      {configMissing
         ? (
           <main className="page narrow">
             <h1 className="display">Falta configurar Supabase</h1>
-            <p className="muted">Esta versión se ha publicado sin VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY. Añádelas en GitHub (Settings → Secrets and variables → Actions → Variables) y vuelve a desplegar.</p>
+            <p className="muted">Faltan VITE_SUPABASE_URL y VITE_SUPABASE_KEY. En local van en .env.local; en GitHub, en Settings → Secrets and variables → Actions → Variables.</p>
           </main>
         )
         : code ? <RoomGate key={code} code={code} /> : <Home />}

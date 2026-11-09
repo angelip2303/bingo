@@ -11,7 +11,6 @@ export interface Account {
 }
 
 export interface Backend {
-  readonly mode: 'local' | 'supabase';
 
   /** Cuenta con sesión abierta en este dispositivo */
   currentUser(): Promise<Account | null>;
@@ -35,7 +34,6 @@ export interface Backend {
   subscribe(roomId: string, onChange: () => void): () => void;
 
   addItems(roomId: string, playerId: string, items: NewItem[]): Promise<Item[]>;
-  deleteItem(itemId: string): Promise<void>;
   saveCard(roomId: string, playerId: string, cells: string[]): Promise<void>;
 
   claim(roomId: string, playerId: string, itemId: string): Promise<void>;
@@ -46,7 +44,6 @@ export interface Backend {
   setReferee(roomId: string, playerId: string): Promise<void>;
   resolveClaim(claimId: string, accept: boolean): Promise<void>;
   setHappened(itemId: string, happened: boolean): Promise<void>;
-  updateCandidates(roomId: string, candidates: Candidate[]): Promise<void>;
   /** guarda (o reemplaza) la clasificación final de la sala */
   saveResults(roomId: string, results: Omit<Result, 'room_id' | 'finished_at'>[]): Promise<void>;
 

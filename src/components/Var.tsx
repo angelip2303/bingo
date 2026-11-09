@@ -114,18 +114,17 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
           </>
         )}
       </div>
-      {panelOpen && <WhistlePanel ctx={ctx} referee={isReferee} onClose={pinned ? undefined : () => setBrowsing(false)} />}
+      {panelOpen && <WhistlePanel ctx={ctx} onClose={pinned ? undefined : () => setBrowsing(false)} />}
     </section>
   );
 }
 
 /**
- * Buscar entre los eventos que aún no han pasado.
- * Árbitro: pita varios seguidos sin salir, ordenados por cuántos cartones afectan, con deshacer.
- * Jugador: canta uno y vuelve.
+ * Pitar (solo árbitro): eventos que aún no han pasado, ordenados por cuántos
+ * cartones afectan; se pitan varios seguidos sin salir y el último se puede deshacer.
  */
-function WhistlePanel({ ctx, referee, onClose }: { ctx: RoomCtx; referee: boolean; onClose?: () => void }) {
-  const { snap, me, run } = ctx;
+function WhistlePanel({ ctx, onClose }: { ctx: RoomCtx; onClose?: () => void }) {
+  const { snap, run } = ctx;
   const candidates = snap.room.candidates;
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<'all' | 'g' | number>('all');
@@ -133,7 +132,6 @@ function WhistlePanel({ ctx, referee, onClose }: { ctx: RoomCtx; referee: boolea
   const pendingIds = new Set(snap.claims.filter((c) => c.status === 'pending').map((c) => c.item_id));
   const inCards = new Map<string, number>();
   snap.cards.forEach((c) => c.cells.forEach((id) => inCards.set(id, (inCards.get(id) ?? 0) + 1)));
-  const myCard = new Set(snap.cards.find((c) => c.player_id === me.id)?.cells ?? []);
   const nq = norm(q.trim());
   const list = snap.items
     .filter((i) => !i.happened_at && !pendingIds.has(i.id))
@@ -143,27 +141,18 @@ function WhistlePanel({ ctx, referee, onClose }: { ctx: RoomCtx; referee: boolea
 
   const select = (it: Item) => {
     vibrate(40);
-    if (referee) {
-      setLast(it);
-      run(() => backend.setHappened(it.id, true));
-    } else {
-      onClose?.();
-      run(() => backend.claim(snap.room.id, me.id, it.id));
-    }
+    setLast(it);
+    run(() => backend.setHappened(it.id, true));
   };
 
   return (
-    <aside className="panel-dock" aria-label={referee ? 'Pitar' : 'Cantar'}>
+    <aside className="panel-dock" aria-label="Pitar">
       <div className="dock-head">
-        <h2 className="display dock-title">{referee ? 'Pitar' : 'Cantar'}</h2>
+        <h2 className="display dock-title">Pitar</h2>
         {onClose && <button className="btn ghost small" onClick={onClose}>Listo</button>}
       </div>
       <div className="dock-body">
-      <p className="muted small">
-        {referee
-          ? 'Toca lo que acaba de pasar. Cuenta al momento para todos, sin pasar por el VAR.'
-          : 'Si ha pasado algo que no está en tu cartón, cántalo igual: si el árbitro lo valida, ganas el punto.'}
-      </p>
+      <p className="muted small">Toca lo que acaba de pasar. Cuenta al momento para todos, sin pasar por el VAR.</p>
       {last && (
         <div className="whistle-done" role="status">
           <span>Pitado: <b>{itemText(last, candidates)}</b></span>
@@ -181,7 +170,7 @@ function WhistlePanel({ ctx, referee, onClose }: { ctx: RoomCtx; referee: boolea
                 <CandTag index={it.candidate} candidates={candidates} />
                 <span className="pick-text">{itemBody(it, candidates)}</span>
                 <small className="pick-meta">
-                  {referee ? (count ? `${count} ${count === 1 ? 'cartón' : 'cartones'}` : 'Nadie') : myCard.has(it.id) ? 'En tu cartón' : ''}
+                  {count ? `${count} ${count === 1 ? 'cartón' : 'cartones'}` : 'Nadie'}
                 </small>
               </button>
             </li>

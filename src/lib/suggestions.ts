@@ -120,23 +120,3 @@ export function fillCard(cells: string[], bank: Item[], candidateCount: number):
   }
   return out;
 }
-
-export function balance(cells: string[], bank: Item[], candidateCount: number) {
-  const per = Array.from({ length: candidateCount }, () => 0);
-  let general = 0;
-  for (const id of cells) {
-    const it = bank.find((b) => b.id === id);
-    if (!it) continue;
-    if (it.candidate == null) general++;
-    else per[it.candidate]++;
-  }
-  const filled = cells.filter((id) => bank.some((b) => b.id === id)).length;
-  const max = Math.max(...per);
-  const warning =
-    filled >= cells.length / 2 && per.some((n) => n === 0)
-      ? 'Hay algún candidato sin casillas'
-      : filled > 0 && max > cells.length / 2
-        ? 'Demasiadas casillas de un mismo candidato'
-        : null;
-  return { per, general, filled, warning };
-}

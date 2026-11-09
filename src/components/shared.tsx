@@ -5,25 +5,12 @@ import type { Candidate, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import FitText from './FitText';
 
-const brokenLogos = new Set<string>();
-
 export const acronym = (party = '') => (party.includes(' ') ? party.split(/\s+/).map((w) => w[0]).join('') : party);
 
-/** Logo real del partido si está en public/logos; si no, sus siglas en tipografía (nunca un logo dibujado). */
+/** Siglas del partido en su bloque de color. */
 export function PartyMark({ cand, size = 20 }: { cand?: Candidate; size?: number }) {
-  const [broken, setBroken] = useState(() => !cand?.logo || brokenLogos.has(cand.logo));
   if (!cand) return null;
   const style = { '--cand': cand.color, '--mark': `${size}px` } as React.CSSProperties;
-  if (!broken && cand.logo) {
-    return (
-      <span className="mark logo" style={style}>
-        <img
-          src={import.meta.env.BASE_URL + cand.logo} alt="" width={size} height={size}
-          onError={() => { brokenLogos.add(cand.logo!); setBroken(true); }}
-        />
-      </span>
-    );
-  }
   return <span className="mark text" style={style} aria-hidden>{acronym(cand.party) || cand.name[0]}</span>;
 }
 
@@ -93,11 +80,9 @@ export function CellFace({ item, candidates }: { item: Pick<Item, 'text' | 'cand
 }
 
 /** Pantalla completa tipo menú de videojuego para opciones, guía y confirmaciones. */
-export function Screen({ title, label, onClose, action, children }: {
+export function Screen({ title, label, onClose, children }: {
   /** sin título si la pantalla ya se explica sola */
   title?: React.ReactNode; label?: string; onClose: () => void; children: React.ReactNode;
-  /** acción principal opcional arriba a la derecha (Hecho, Guardar…) */
-  action?: React.ReactNode;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -108,7 +93,6 @@ export function Screen({ title, label, onClose, action, children }: {
     <div className="screen" role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}>
       <div className="screen-head">
         <button className="btn ghost small back-btn" onClick={onClose}><span aria-hidden>←</span> Volver</button>
-        {action}
       </div>
       <div className="screen-body">
         <div className="screen-inner">
@@ -147,13 +131,12 @@ const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
 /** Escribir un evento propio: de quién + qué pasa, con vista previa de la casilla. */
 export function EventComposer({
-  ctx, initialCand = null, submitLabel = 'Añadir evento', onAdded, onCancel, onDraft, preview = true,
+  ctx, initialCand = null, submitLabel, onAdded, onDraft,
 }: {
-  ctx: RoomCtx; initialCand?: number | null; submitLabel?: string;
-  onAdded?: (item: Item) => void; onCancel?: () => void;
+  ctx: RoomCtx; initialCand?: number | null; submitLabel: string;
+  onAdded: (item: Item) => void;
   /** recibe el evento a medio escribir para pintarlo en vivo en el cartón */
-  onDraft?: (draft: Pick<Item, 'text' | 'candidate'> | null) => void;
-  preview?: boolean;
+  onDraft: (draft: Pick<Item, 'text' | 'candidate'> | null) => void;
 }) {
   const { snap, me, run } = ctx;
   const candidates = snap.room.candidates;
@@ -162,8 +145,8 @@ export function EventComposer({
   const [busy, setBusy] = useState(false);
   const t = text.trim();
   const stored = cand != null && t && !t.includes('{c}') ? `{c} ${lowerFirst(t)}` : t;
-  useEffect(() => { onDraft?.(t ? { text: stored, candidate: cand } : null); }, [stored, cand]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => onDraft?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onDraft(t ? { text: stored, candidate: cand } : null); }, [stored, cand]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onDraft(null), []); // eslint-disable-line react-hooks/exhaustive-deps
   const dup = t && snap.items.some((i) => i.candidate === cand && norm(itemText(i, candidates)) === norm(itemText({ text: stored, candidate: cand }, candidates)));
 
   return (
@@ -176,7 +159,7 @@ export function EventComposer({
         run(async () => {
           const [item] = await backend.addItems(snap.room.id, me.id, [{ text: stored, candidate: cand }]);
           setText('');
-          onAdded?.(item);
+          onAdded(item);
         }).finally(() => setBusy(false));
       }}
     >
@@ -193,14 +176,8 @@ export function EventComposer({
           />
         </div>
       </label>
-      {preview && <div className="composer-preview">
-        <div className={`cell preview ${t ? 'filled' : 'empty'}`} style={cand != null ? ({ '--cand': candidates[cand].color } as React.CSSProperties) : undefined}>
-          {t ? <CellFace item={{ text: stored, candidate: cand }} candidates={candidates} /> : <span className="cell-text muted">Así se verá en el cartón</span>}
-        </div>
-      </div>}
       {dup && <p className="warn">Ese evento ya existe en el banco.</p>}
       <div className="composer-foot">
-        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Volver</button>}
         <button className="btn" disabled={!t || !!dup || busy}>{submitLabel}</button>
       </div>
     </form>
@@ -251,7 +228,7 @@ export function EventPanel({
           <EventComposer
             key={index}
             ctx={ctx} initialCand={typeof filter === 'number' ? filter : null}
-            submitLabel="Poner en la casilla" preview={false} onDraft={onDraft}
+            submitLabel="Poner en la casilla" onDraft={onDraft}
             onAdded={(it) => { onPick(it.id); setMode('list'); }}
           />
         ) : (

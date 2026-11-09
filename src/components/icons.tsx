@@ -24,8 +24,3 @@ export const IconShuffle = () => (
     <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
   </svg>
 );
-
-/** lucide: check */
-export const IconCheck = () => (
-  <svg {...base}><path d="M20 6 9 17l-5-5" /></svg>
-);

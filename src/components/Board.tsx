@@ -53,6 +53,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
             return (
               <button
                 key={i}
+                data-item={id}
                 className={`cell filled ${done ? 'done' : ''} ${lineCells.has(i) ? 'in-line' : ''} ${pending ? 'pending' : ''}`}
                 style={it.candidate != null ? ({ '--cand': snap.room.candidates[it.candidate]?.color } as React.CSSProperties) : undefined}
                 disabled={done || finished || !!mineVote}

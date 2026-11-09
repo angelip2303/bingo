@@ -52,7 +52,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
   };
 
   const api: Backend = {
-    mode: 'supabase',
 
     async currentUser() {
       return loadAccount();
@@ -165,9 +164,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return ok(res) as Item[];
     },
 
-    async deleteItem(itemId) {
-      ok(await sb.from('items').delete().eq('id', itemId));
-    },
 
     async saveCard(roomId, playerId, cells) {
       ok(await sb.from('cards').upsert(
@@ -206,9 +202,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       ok(await sb.rpc('set_happened', { p_item: itemId, p_happened: happened }));
     },
 
-    async updateCandidates(roomId, candidates) {
-      ok(await sb.from('rooms').update({ candidates }).eq('id', roomId));
-    },
 
     async saveResults(roomId, results) {
       ok(await sb.rpc('save_results', { p_room: roomId, p_results: results }));
