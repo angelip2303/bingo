@@ -50,19 +50,26 @@ export function CandTag({ index, candidates, size }: { index: number | null; can
 
 type Filter = 'all' | 'g' | number;
 
+/**
+ * Fila de rótulos para elegir candidato.
+ * - modo filtro (por defecto): ninguno marcado = todos; tocar el marcado lo desmarca.
+ * - modo elegir (pick): uno siempre marcado, General incluido.
+ */
 export function CandFilter({
-  value, onChange, candidates, withAll = true,
-}: { value: Filter; onChange: (v: Filter) => void; candidates: Candidate[]; withAll?: boolean }) {
+  value, onChange, candidates, pick = false,
+}: { value: Filter; onChange: (v: Filter) => void; candidates: Candidate[]; pick?: boolean }) {
   const opts: [Filter, React.ReactNode][] = [
-    ...(withAll ? [['all', <Tag label="Todos" size="lg" />] as [Filter, React.ReactNode]] : []),
     ['g', <Tag label="General" size="lg" />],
     ...candidates.map((c, i) => [i, <Tag cand={c} size="lg" />] as [number, React.ReactNode]),
   ];
-  // una fila de rótulos del mismo ancho; si no cabe el apellido quedan las siglas
+  const active = (v: Filter) => value === v;
   return (
-    <div className="cand-pick" role="group" aria-label="Candidato" style={{ '--cols': opts.length } as React.CSSProperties}>
+    <div className={`cand-pick ${!pick && value === 'all' ? 'none' : ''}`} role="group" aria-label={pick ? 'Candidato' : 'Filtrar por candidato'} style={{ '--cols': opts.length } as React.CSSProperties}>
       {opts.map(([v, tag]) => (
-        <button type="button" key={String(v)} className="tag-btn" aria-pressed={value === v} onClick={() => onChange(v)}>{tag}</button>
+        <button
+          type="button" key={String(v)} className="tag-btn" aria-pressed={active(v)}
+          onClick={() => onChange(!pick && active(v) ? 'all' : v)}
+        >{tag}</button>
       ))}
     </div>
   );
@@ -85,20 +92,26 @@ export function CellFace({ item, candidates }: { item: Pick<Item, 'text' | 'cand
 }
 
 /** Pantalla completa tipo menú de videojuego para opciones, guía y confirmaciones. */
-export function Screen({ title, onClose, children }: { title: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
+export function Screen({ title, label, onClose, action, children }: {
+  /** sin título si la pantalla ya se explica sola */
+  title?: React.ReactNode; label?: string; onClose: () => void; children: React.ReactNode;
+  /** acción principal opcional arriba a la derecha (Hecho, Guardar…) */
+  action?: React.ReactNode;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="screen" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
+    <div className="screen" role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}>
       <div className="screen-head">
-        <button className="btn ghost small" onClick={onClose}>Volver</button>
+        <button className="btn ghost small back-btn" onClick={onClose}><span aria-hidden>←</span> Volver</button>
+        {action}
       </div>
       <div className="screen-body">
         <div className="screen-inner">
-          <h2 className="display screen-title">{title}</h2>
+          {title && <h2 className="display screen-title">{title}</h2>}
           {children}
         </div>
       </div>
@@ -168,7 +181,7 @@ export function EventComposer({
     >
       <div className="field">
         <span>¿De quién?</span>
-        <CandFilter value={cand ?? 'g'} onChange={(v) => setCand(v === 'g' || v === 'all' ? null : v)} candidates={candidates} withAll={false} />
+        <CandFilter pick value={cand ?? 'g'} onChange={(v) => setCand(v === 'g' || v === 'all' ? null : v)} candidates={candidates} />
       </div>
       <label className="field">
         <span>¿Qué va a pasar?</span>

@@ -15,7 +15,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
 
   if (!card || card.cells.length !== n * n || card.cells.some((id) => !snap.items.some((i) => i.id === id))) {
     return (
-      <section className="empty-state">
+      <section className="empty-state var-empty">
         <h2 className="display">Sin cartón</h2>
         <p className="muted">La partida empezó sin que completaras tu cartón. Puedes seguir cantando eventos y votando en el VAR.</p>
       </section>

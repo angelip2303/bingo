@@ -7,12 +7,11 @@ import CardEditor from './CardEditor';
 import Board from './Board';
 import Var from './Var';
 import Ranking from './Ranking';
-import Bank from './Bank';
 import RoomSettings from './RoomSettings';
 import Guide from './Guide';
 import { Screen } from './shared';
 
-type Tab = 'card' | 'var' | 'ranking' | 'bank';
+type Tab = 'card' | 'var' | 'ranking';
 
 export interface RoomCtx {
   snap: Snapshot;
@@ -82,7 +81,6 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
         {tab === 'card' && (snap.room.status === 'lobby' ? <CardEditor ctx={ctx} /> : <Board ctx={ctx} scores={scoring!.scores} />)}
         {tab === 'var' && <Var ctx={ctx} />}
         {tab === 'ranking' && <Ranking ctx={ctx} scores={scoring!.scores} />}
-        {tab === 'bank' && <Bank ctx={ctx} />}
       </main>
 
       <nav className="tabbar" aria-label="Secciones">
@@ -90,7 +88,6 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
           ['card', 'Cartón'],
           ['var', 'VAR'],
           ['ranking', 'Ranking'],
-          ['bank', 'Eventos'],
         ] as [Tab, string][]).map(([id, label]) => (
           <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => setTab(id)}>
             {label}
@@ -99,7 +96,7 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
         ))}
       </nav>
 
-      {panel === 'room' && <Screen title={`Sala ${snap.room.code}`} onClose={() => setPanel(null)}><RoomSettings ctx={ctx} /></Screen>}
+      {panel === 'room' && <Screen label={`Sala ${snap.room.code}`} onClose={() => setPanel(null)}><RoomSettings ctx={ctx} /></Screen>}
       {panel === 'guide' && <Screen title="Cómo se juega" onClose={() => setPanel(null)}><Guide /></Screen>}
 
       <div className="toasts" aria-live="polite">

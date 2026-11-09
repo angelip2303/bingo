@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { backend } from '../backend';
+import { useMediaQuery } from '../lib/useRoom';
 import { fillCard, itemText } from '../lib/suggestions';
 import type { Item } from '../types';
 import { CellFace, ConfirmDialog, EventPanel, SeatBar } from './shared';
@@ -59,6 +60,7 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
   };
 
   const editing = open != null;
+  const wide = useMediaQuery('(min-width: 900px)');
 
   return (
     <div className={`stage-view editor ${editing ? 'editing' : ''}`}>
@@ -114,7 +116,7 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
         />
       )}
 
-      {editing && (
+      {editing ? (
         <EventPanel
           ctx={ctx}
           index={open}
@@ -126,6 +128,13 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
           onClose={() => { setDraft(null); setOpen(null); }}
           onDraft={setDraft}
         />
+      ) : wide && (
+        <aside className="panel-dock idle" aria-label="Editor">
+          <div className="idle-in">
+            <h2 className="display">Edita tu cartón</h2>
+            <p className="muted">Toca una casilla para elegir qué va en ella o escribir lo tuyo. Lo verás en el cartón al momento.</p>
+          </div>
+        </aside>
       )}
     </div>
   );

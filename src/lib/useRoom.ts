@@ -35,3 +35,15 @@ export function useRoom(roomId: string) {
 export function vibrate(pattern: number | number[]) {
   try { navigator.vibrate?.(pattern); } catch { /* iOS no vibra */ }
 }
+
+/** true mientras la media query se cumpla (p. ej. pantalla de ordenador) */
+export function useMediaQuery(query: string) {
+  const [match, setMatch] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(query).matches);
+  useEffect(() => {
+    const m = matchMedia(query);
+    const on = () => setMatch(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, [query]);
+  return match;
+}
