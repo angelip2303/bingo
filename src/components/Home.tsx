@@ -6,10 +6,10 @@ import type { Candidate, Player, Room } from '../types';
 import { CandTag } from './shared';
 
 export const DEFAULT_CANDIDATES: Candidate[] = [
-  { name: 'Sánchez', party: 'PSOE', color: '#e30613', logo: 'logos/psoe.svg' },
-  { name: 'Feijóo', party: 'PP', color: '#1d84ce', logo: 'logos/pp.svg' },
-  { name: 'Abascal', party: 'VOX', color: '#5ac035', logo: 'logos/vox.svg' },
-  { name: 'Colau', party: 'Frente Amplio', color: '#d8256f', logo: 'logos/frente-amplio.svg' },
+  { name: 'Sánchez', party: 'PSOE', color: '#e30613' },
+  { name: 'Feijóo', party: 'PP', color: '#1d84ce' },
+  { name: 'Abascal', party: 'VOX', color: '#5ac035' },
+  { name: 'Colau', party: 'Frente Amplio', color: '#d8256f' },
 ];
 
 const NAME_KEY = 'bingo-salvaje-name';
