@@ -7,7 +7,7 @@ Bingo del debate electoral del 29N para jugar entre amigos desde el móvil. Cada
 1. Alguien **crea la sala** (y es el árbitro). Comparte el código o el enlace.
 2. Cada uno rellena su **cartón**: a mano desde el banco de eventos, escribiendo los suyos o con *Rellenar huecos* (reparte entre candidatos).
 3. El árbitro pulsa **Empezar partida** y los cartones se bloquean.
-4. Cuando pasa algo, tocas la casilla y lo **cantas**. Va al **VAR**: los demás votan *Ha pasado* / *Mentira* y el árbitro **valida** o saca **tarjeta amarilla**. El árbitro también puede **pitar** eventos directamente desde *Eventos*.
+4. Cuando pasa algo, tocas la casilla y lo **cantas**. Va al **VAR**: los demás votan *Ha pasado* / *Mentira* y el árbitro **valida** o saca **tarjeta amarilla**. El árbitro también puede **pitar** eventos directamente desde el VAR (*Pitar*).
 
 Puntos: +1 por casilla, +5 por línea, +3 a la primera línea, +20 por bingo, +10 al primer bingo, +1 por cante validado, −1 por tarjeta amarilla.
 
