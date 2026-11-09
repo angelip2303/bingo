@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { backend } from '../backend';
+import { itemBody, itemText } from '../lib/suggestions';
 import type { Candidate, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 
 const brokenLogos = new Set<string>();
 
-const acronym = (party = '') => (party.includes(' ') ? party.split(/\s+/).map((w) => w[0]).join('') : party);
+export const acronym = (party = '') => (party.includes(' ') ? party.split(/\s+/).map((w) => w[0]).join('') : party);
 
 /** Logo real del partido si está en public/logos; si no, sus siglas en tipografía (nunca un logo dibujado). */
 export function PartyMark({ cand, size = 20 }: { cand?: Candidate; size?: number }) {
@@ -47,62 +48,234 @@ export function CandTag({ index, candidates, size }: { index: number | null; can
   return <Tag cand={candidates[index]} size={size} />;
 }
 
+type Filter = 'all' | 'g' | number;
+
 export function CandFilter({
-  value, onChange, candidates,
-}: { value: 'all' | 'g' | number; onChange: (v: 'all' | 'g' | number) => void; candidates: Candidate[] }) {
-  const opts: ['all' | 'g' | number, React.ReactNode][] = [
-    ['all', <Tag label="Todos" />],
+  value, onChange, candidates, withAll = true,
+}: { value: Filter; onChange: (v: Filter) => void; candidates: Candidate[]; withAll?: boolean }) {
+  const opts: [Filter, React.ReactNode][] = [
+    ...(withAll ? [['all', <Tag label="Todos" />] as [Filter, React.ReactNode]] : []),
     ['g', <Tag label="General" />],
     ...candidates.map((c, i) => [i, <Tag cand={c} />] as [number, React.ReactNode]),
   ];
   return (
-    <div className="chips" role="group" aria-label="Filtrar por candidato">
+    <div className="chips" role="group" aria-label="Candidato">
       {opts.map(([v, tag]) => (
-        <button key={String(v)} className="tag-btn" aria-pressed={value === v} onClick={() => onChange(v)}>{tag}</button>
+        <button type="button" key={String(v)} className="tag-btn" aria-pressed={value === v} onClick={() => onChange(v)}>{tag}</button>
       ))}
     </div>
   );
 }
 
-export function matchesFilter(item: Item, f: 'all' | 'g' | number) {
+export function matchesFilter(item: Item, f: Filter) {
   return f === 'all' || (f === 'g' ? item.candidate == null : item.candidate === f);
 }
 
-/** Escribir un evento a mano. Usa {c} implícito: si eliges candidato, el nombre va delante. */
-export function AddItemForm({ ctx, onAdded }: { ctx: RoomCtx; onAdded?: (item: Item) => void }) {
-  const [text, setText] = useState('');
-  const [cand, setCand] = useState<number | null>(null);
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** Lo que va dentro de una casilla: rótulo + acción. Igual en editor, partida y vista previa. */
+export function CellFace({ item, candidates }: { item: Pick<Item, 'text' | 'candidate'>; candidates: Candidate[] }) {
+  return (
+    <>
+      {item.candidate != null && <span className="cell-tag"><CandTag index={item.candidate} candidates={candidates} size="sm" /></span>}
+      <span className="cell-text">{itemBody(item, candidates)}</span>
+    </>
+  );
+}
+
+/** Pantalla completa tipo menú de videojuego para opciones, guía y confirmaciones. */
+export function Screen({ title, onClose, children }: { title: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="screen" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
+      <div className="screen-head">
+        <h2 className="display">{title}</h2>
+        <button className="btn ghost small" onClick={onClose}>Volver</button>
+      </div>
+      <div className="screen-body"><div className="screen-inner">{children}</div></div>
+    </div>
+  );
+}
+
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
+/** Escribir un evento propio: de quién + qué pasa, con vista previa de la casilla. */
+export function EventComposer({
+  ctx, initialCand = null, submitLabel = 'Añadir evento', onAdded, onCancel, onDraft, preview = true,
+}: {
+  ctx: RoomCtx; initialCand?: number | null; submitLabel?: string;
+  onAdded?: (item: Item) => void; onCancel?: () => void;
+  /** recibe el evento a medio escribir para pintarlo en vivo en el cartón */
+  onDraft?: (draft: Pick<Item, 'text' | 'candidate'> | null) => void;
+  preview?: boolean;
+}) {
   const { snap, me, run } = ctx;
+  const candidates = snap.room.candidates;
+  const [cand, setCand] = useState<number | null>(initialCand);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const t = text.trim();
+  const stored = cand != null && t && !t.includes('{c}') ? `{c} ${lowerFirst(t)}` : t;
+  useEffect(() => { onDraft?.(t ? { text: stored, candidate: cand } : null); }, [stored, cand]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onDraft?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const dup = t && snap.items.some((i) => i.candidate === cand && norm(itemText(i, candidates)) === norm(itemText({ text: stored, candidate: cand }, candidates)));
+
   return (
     <form
-      className="add-item"
+      className="composer"
       onSubmit={(e) => {
         e.preventDefault();
-        const t = text.trim();
-        if (!t) return;
+        if (!t || dup) return;
+        setBusy(true);
         run(async () => {
-          // si eligen candidato y no lo nombran, lo ponemos delante: "{c} se tropieza"
-          const final = cand != null && !t.includes('{c}') ? `{c} ${t.charAt(0).toLowerCase()}${t.slice(1)}` : t;
-          const [item] = await backend.addItems(snap.room.id, me.id, [{ text: final, candidate: cand }]);
+          const [item] = await backend.addItems(snap.room.id, me.id, [{ text: stored, candidate: cand }]);
           setText('');
           onAdded?.(item);
-        });
+        }).finally(() => setBusy(false));
       }}
     >
+      <div className="field">
+        <span>¿De quién?</span>
+        <CandFilter value={cand ?? 'g'} onChange={(v) => setCand(v === 'g' || v === 'all' ? null : v)} candidates={candidates} withAll={false} />
+      </div>
       <label className="field">
-        <span>Escribe tu propio evento</span>
-        <input value={text} onChange={(e) => setText(e.target.value)} maxLength={110} placeholder="se le cae el boli" />
+        <span>¿Qué va a pasar?</span>
+        <div className="composer-input">
+          {cand != null && <Tag cand={candidates[cand]} />}
+          <input
+            value={text} onChange={(e) => setText(e.target.value)} maxLength={100} autoFocus
+            placeholder={cand != null ? 'se le cae el boli' : 'Alguien se equivoca de nombre'}
+          />
+        </div>
       </label>
-      <div className="add-item-row">
-        <select
-          aria-label="De qué candidato" value={cand ?? ''}
-          onChange={(e) => setCand(e.target.value === '' ? null : Number(e.target.value))}
-        >
-          <option value="">General</option>
-          {snap.room.candidates.map((c, i) => <option key={i} value={i}>{c.name}</option>)}
-        </select>
-        <button className="btn" disabled={!text.trim()}>Añadir evento</button>
+      {preview && <div className="composer-preview">
+        <div className={`cell preview ${t ? 'filled' : 'empty'}`} style={cand != null ? ({ '--cand': candidates[cand].color } as React.CSSProperties) : undefined}>
+          {t ? <CellFace item={{ text: stored, candidate: cand }} candidates={candidates} /> : <span className="cell-text muted">Así se verá en el cartón</span>}
+        </div>
+      </div>}
+      {dup && <p className="warn">Ese evento ya existe en el banco.</p>}
+      <div className="row-actions">
+        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Volver</button>}
+        <button className="btn" disabled={!t || !!dup || busy}>{submitLabel}</button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Panel de edición acoplado (lateral en ordenador, mitad inferior en móvil).
+ * Todo lo que haces se ve en el cartón al momento.
+ */
+export function EventPanel({
+  ctx, index, total, currentId, usedAt, onPick, onClear, onMove, onClose, onDraft,
+}: {
+  ctx: RoomCtx; index: number; total: number; currentId: string | null; usedAt: Map<string, number>;
+  onPick: (id: string) => void; onClear: () => void; onMove: (delta: number) => void; onClose: () => void;
+  onDraft: (d: Pick<Item, 'text' | 'candidate'> | null) => void;
+}) {
+  const { snap } = ctx;
+  const candidates = snap.room.candidates;
+  const [mode, setMode] = useState<'list' | 'new'>('list');
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const list = useMemo(() => {
+    const nq = norm(q.trim());
+    return snap.items
+      .filter((i) => matchesFilter(i, filter))
+      .filter((i) => !nq || norm(itemText(i, candidates)).includes(nq))
+      .sort((a, b) => Number(usedAt.has(a.id)) - Number(usedAt.has(b.id)));
+  }, [snap.items, filter, q, candidates, usedAt]);
+
+  return (
+    <aside className="panel-dock" aria-label={`Editar casilla ${index + 1}`}>
+      <div className="dock-head">
+        <button className="icon-btn" onClick={() => onMove(-1)} disabled={index === 0} aria-label="Casilla anterior">◀</button>
+        <h2 className="display">Casilla {index + 1}<span className="muted">/{total}</span></h2>
+        <button className="icon-btn" onClick={() => onMove(1)} disabled={index === total - 1} aria-label="Casilla siguiente">▶</button>
+        <button className="btn ghost small" onClick={onClose}>Listo</button>
+      </div>
+
+      <div className="dock-tabs seg small" role="tablist">
+        <button role="tab" aria-selected={mode === 'list'} onClick={() => setMode('list')}>Elegir</button>
+        <button role="tab" aria-selected={mode === 'new'} onClick={() => setMode('new')}>Escribir</button>
+        {currentId && <button onClick={onClear}>Vaciar</button>}
+      </div>
+
+      <div className="dock-body">
+        {mode === 'new' ? (
+          <EventComposer
+            key={index}
+            ctx={ctx} initialCand={typeof filter === 'number' ? filter : null}
+            submitLabel="Poner en la casilla" preview={false} onDraft={onDraft}
+            onAdded={(it) => { onPick(it.id); setMode('list'); }}
+          />
+        ) : (
+          <>
+            <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento…" aria-label="Buscar evento" />
+            <CandFilter value={filter} onChange={setFilter} candidates={candidates} />
+            <ul className="pick-list">
+              {list.map((it) => {
+                const at = usedAt.get(it.id);
+                const here = it.id === currentId;
+                return (
+                  <li key={it.id}>
+                    <button className={`pick ${here ? 'current' : ''}`} onClick={() => onPick(it.id)} disabled={here}>
+                      <CandTag index={it.candidate} candidates={candidates} />
+                      <span className="pick-text">{itemBody(it, candidates)}</span>
+                      {at != null && <small className="pick-meta">{here ? 'Aquí' : `En la ${at + 1} · cambiar`}</small>}
+                    </button>
+                  </li>
+                );
+              })}
+              {list.length === 0 && <li className="empty-line">Nada con ese filtro. Escríbelo tú.</li>}
+            </ul>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+/** Reparto del cartón como barra de hemiciclo: un tramo por candidato y los huecos. */
+export function SeatBar({ cells, items, candidates }: { cells: string[]; items: Item[]; candidates: Candidate[] }) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const per = candidates.map(() => 0);
+  let general = 0;
+  let filled = 0;
+  for (const id of cells) {
+    const it = byId.get(id);
+    if (!it) continue;
+    filled++;
+    if (it.candidate == null) general++;
+    else per[it.candidate]++;
+  }
+  const empty = cells.length - filled;
+  const max = Math.max(...per);
+  const warning =
+    filled >= cells.length / 2 && per.some((n) => n === 0) ? `${candidates[per.indexOf(0)].name} no sale en tu cartón`
+      : max > cells.length / 2 ? 'Mucho de un mismo candidato'
+        : null;
+
+  const seats = [
+    ...candidates.map((c, i) => ({ key: String(i), n: per[i], label: acronym(c.party) || c.name, color: c.color, name: c.name })),
+    { key: 'g', n: general, label: 'GEN', color: '#3a3a3a', name: 'General' },
+  ];
+  return (
+    <div className="seatbar-wrap">
+      <div className="seatbar" role="img" aria-label={seats.map((s) => `${s.name} ${s.n}`).join(', ') + (empty ? `, ${empty} huecos` : '')}>
+        {seats.filter((s) => s.n > 0).map((s) => (
+          <span key={s.key} className="seat" style={{ flexGrow: s.n, '--cand': s.color } as React.CSSProperties}>
+            <b>{s.label}</b><i className="num">{s.n}</i>
+          </span>
+        ))}
+        {empty > 0 && <span className="seat empty" style={{ flexGrow: empty }}><i className="num">{empty}</i></span>}
+      </div>
+      {warning && <p className="warn">{warning}</p>}
+    </div>
   );
 }

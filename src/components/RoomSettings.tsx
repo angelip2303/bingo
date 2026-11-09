@@ -7,14 +7,12 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   const { snap, me, isReferee, run } = ctx;
   const { room } = snap;
   const [copied, setCopied] = useState(false);
-  const [cands, setCands] = useState(room.candidates);
   const link = `${location.origin}${location.pathname}#/r/${room.code}`;
   const total = room.board_size ** 2;
   const ready = snap.players.filter((p) => {
     const c = snap.cards.find((x) => x.player_id === p.id);
     return c && c.cells.filter((id) => snap.items.some((i) => i.id === id)).length === total;
   }).length;
-  const dirty = JSON.stringify(cands) !== JSON.stringify(room.candidates);
 
   const share = async () => {
     try {
@@ -37,7 +35,7 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
           {room.status === 'lobby' && (
             <>
               <p className="muted small">{ready} de {snap.players.length} tienen el cartón completo. Al empezar se bloquean los cartones.</p>
-              <button className="btn big" onClick={() => run(() => backend.setStatus(room.id, 'live'))}>Empezar partida</button>
+              <button className="btn big hot" onClick={() => run(() => backend.setStatus(room.id, 'live'))}>Empezar partida</button>
             </>
           )}
           {room.status === 'live' && (
@@ -68,23 +66,6 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
           ))}
         </ul>
       </div>
-
-      {isReferee && (
-        <div className="panel stack">
-          <h2 className="display">Candidatos</h2>
-          <div className="cand-grid">
-            {cands.map((c, i) => (
-              <div key={i} className="cand-input" style={{ '--cand': c.color } as React.CSSProperties}>
-                <input type="color" value={c.color} aria-label={`Color de ${c.name}`}
-                  onChange={(e) => setCands(cands.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))} />
-                <input value={c.name} maxLength={20} aria-label={`Nombre del candidato ${i + 1}`}
-                  onChange={(e) => setCands(cands.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-              </div>
-            ))}
-          </div>
-          <button className="btn" disabled={!dirty} onClick={() => run(() => backend.updateCandidates(room.id, cands))}>Guardar candidatos</button>
-        </div>
-      )}
 
       <button className="btn ghost" onClick={() => goToRoom(null)}>Salir al inicio</button>
     </section>

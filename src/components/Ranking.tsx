@@ -1,4 +1,4 @@
-import { POINTS, type PlayerScore } from '../lib/scoring';
+import type { PlayerScore } from '../lib/scoring';
 import type { RoomCtx } from './RoomScreen';
 
 export default function Ranking({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
@@ -42,17 +42,6 @@ export default function Ranking({ ctx, scores }: { ctx: RoomCtx; scores: PlayerS
         })}
       </ol>
 
-      <details className="rules">
-        <summary>Cómo se puntúa</summary>
-        <ul>
-          <li>Cada casilla que pasa: <b>+{POINTS.cell}</b></li>
-          <li>Cada línea (fila, columna o diagonal): <b>+{POINTS.line}</b></li>
-          <li>Primera línea de la sala: <b>+{POINTS.firstLine}</b></li>
-          <li>Bingo (cartón completo): <b>+{POINTS.bingo}</b>, y si eres el primero <b>+{POINTS.firstBingo}</b></li>
-          <li>Cantar un evento que el árbitro valida: <b>+{POINTS.hawkEye}</b></li>
-          <li>Tarjeta amarilla por cantar algo que no ha pasado: <b>{POINTS.yellowCard}</b></li>
-        </ul>
-      </details>
     </section>
   );
 }
