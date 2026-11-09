@@ -21,12 +21,19 @@ npm test
 
 ## Supabase
 
-1. En el proyecto: **Authentication → Sign In / Providers → Allow anonymous sign-ins** activado.
-   No hay registro: cada uno pone su nombre. El mismo nombre en el ordenador y en el móvil es el mismo jugador.
-2. **SQL Editor** → pega `supabase/schema.sql` → Run.
-3. **Project Settings → API**: copia la URL y la clave `anon` / publishable a `.env.local` (ver `.env.example`).
+El esquema vive en `supabase/migrations/` y se aplica con la CLI:
 
-La clave `anon` es pública por diseño; la seguridad la ponen las políticas RLS del esquema.
+```bash
+npx supabase login                         # una vez, abre el navegador
+npx supabase link --project-ref <ref>      # el ref está en la URL del proyecto
+npx supabase db push                       # aplica las migraciones pendientes
+```
+
+En el dashboard: **Authentication → Sign In / Providers → Allow anonymous sign-ins** activado.
+No hay registro: cada uno pone su nombre. El mismo nombre en el ordenador y en el móvil es el mismo jugador.
+
+Para la app: **Project Settings → API**, copia la URL y la clave `anon` a `.env.local` (ver `.env.example`).
+La clave `anon` es pública por diseño; la seguridad la ponen las políticas RLS de la migración.
 
 ## Despliegue (GitHub Pages)
 

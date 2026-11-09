@@ -6,7 +6,7 @@ import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import { CellFace, Screen } from './shared';
-import { STICKERS, firstGrapheme, stickerImage, useSticker } from '../lib/sticker';
+import { STICKERS, firstGrapheme, useSticker } from '../lib/sticker';
 
 export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
   const { snap, me, run } = ctx;
@@ -162,8 +162,7 @@ function stickerPose(seed: string): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-/** Dibujo del sticker: Fluent 3D si existe, si no el emoji del sistema. */
+/** Emoji nativo del sistema: el de Apple en iPhone y Mac, el de Google en Android. */
 function StickerArt({ s }: { s: string }) {
-  const src = stickerImage(s);
-  return src ? <img className="sticker-img" src={src} alt="" draggable={false} /> : <>{s}</>;
+  return <span className="sticker-emoji">{s}</span>;
 }

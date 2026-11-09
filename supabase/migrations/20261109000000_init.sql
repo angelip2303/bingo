@@ -1,5 +1,4 @@
--- Bingo Salvaje — esquema para Supabase.
--- Pégalo entero en: Dashboard → SQL Editor → New query → Run.
+-- Bingo Salvaje — esquema inicial (migración de la CLI de Supabase: `supabase db push`).
 -- Requisito: Authentication → Sign In / Providers → "Allow anonymous sign-ins" ACTIVADO.
 -- Identidad para amigos: cada dispositivo tiene una sesión anónima (invisible) y al poner
 -- tu nombre queda vinculada a él. El mismo nombre en otro dispositivo = el mismo jugador.

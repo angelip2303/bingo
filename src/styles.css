@@ -979,3 +979,5 @@ input, select { font-weight: 500; }
 }
 .cell-clear { color: var(--ink); font-size: 15px; opacity: .55; transition: opacity .15s; }
 .cell-clear:hover, .cell-clear:focus-visible { opacity: 1; }
+.sticker-emoji { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; line-height: 1; }
+.sticker-opt .sticker-emoji { font-size: 34px; }
