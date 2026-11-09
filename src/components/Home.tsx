@@ -4,7 +4,12 @@ import { goToRoom } from '../App';
 import { seedItems } from '../lib/suggestions';
 import type { Candidate, Player, Room } from '../types';
 
-export const CANDIDATE_COLORS = ['#ff6b3d', '#3fa7ff', '#2fd486', '#ffc93c'];
+export const DEFAULT_CANDIDATES: Candidate[] = [
+  { name: 'Sánchez', color: '#e8423f' }, // PSOE
+  { name: 'Feijóo', color: '#2b8be0' }, // PP
+  { name: 'Abascal', color: '#5fc72f' }, // Vox
+  { name: 'Colau', color: '#e5468f' }, // Frente Amplio
+];
 
 const NAME_KEY = 'bingo-salvaje-name';
 const savedName = () => { try { return localStorage.getItem(NAME_KEY) ?? ''; } catch { return ''; } };
@@ -49,9 +54,7 @@ function CreateRoom() {
   const [name, setName] = useState('Debate del 29N');
   const [player, setPlayer] = useState(savedName);
   const [size, setSize] = useState(4);
-  const [cands, setCands] = useState<Candidate[]>(
-    CANDIDATE_COLORS.map((color, i) => ({ name: `Candidato ${i + 1}`, color })),
-  );
+  const [cands, setCands] = useState<Candidate[]>(DEFAULT_CANDIDATES);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 

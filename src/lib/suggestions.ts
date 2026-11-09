@@ -42,9 +42,23 @@ export const GENERAL_SUGGESTIONS = [
   'Alguien se queda en blanco',
 ];
 
+/** Temas de campaña habituales de cada uno; se añaden si el nombre del candidato coincide */
+const KNOWN_EXTRAS: Record<string, string[]> = {
+  sanchez: ['{c} presume de datos de empleo', '{c} habla del "escudo social"', '{c} menciona a la ultraderecha', '{c} cita Europa como ejemplo'],
+  feijoo: ['{c} menciona Galicia', '{c} pide elecciones o un cambio de gobierno', '{c} habla de corrupción del Gobierno', '{c} habla de bajar el IRPF'],
+  abascal: ['{c} habla de inmigración ilegal', '{c} critica a los medios', '{c} menciona la unidad de España', '{c} critica el bipartidismo'],
+  colau: ['{c} habla de desahucios', '{c} menciona su etapa en Barcelona', '{c} habla de los alquileres turísticos', '{c} critica a los fondos buitre'],
+};
+
+const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 export function seedItems(candidates: Candidate[]): NewItem[] {
   const out: NewItem[] = GENERAL_SUGGESTIONS.map((text) => ({ text, candidate: null }));
-  candidates.forEach((_, i) => CANDIDATE_TEMPLATES.forEach((text) => out.push({ text, candidate: i })));
+  candidates.forEach((c, i) => {
+    CANDIDATE_TEMPLATES.forEach((text) => out.push({ text, candidate: i }));
+    const key = Object.keys(KNOWN_EXTRAS).find((k) => normalize(c.name).includes(k));
+    if (key) KNOWN_EXTRAS[key].forEach((text) => out.push({ text, candidate: i }));
+  });
   return out;
 }
 
