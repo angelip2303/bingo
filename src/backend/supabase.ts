@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Account, Backend } from './api';
 import { usernameKey } from '../lib/account';
-import type { Item, Player, Result, Room } from '../types';
+import type { Item, Player, Result, Room, Vote } from '../types';
 
 export function createSupabaseBackend(url: string, key: string): Backend {
   const sb: SupabaseClient = createClient(url, key);
@@ -94,24 +94,23 @@ export function createSupabaseBackend(url: string, key: string): Backend {
 
     async snapshot(roomId) {
       await ensureSession();
-      const [room, players, items, cards, claims] = await Promise.all([
+      const [room, players, items, cards, claims, votes] = await Promise.all([
         sb.from('rooms').select().eq('id', roomId).single(),
         sb.from('players').select('id, room_id, name, created_at').eq('room_id', roomId).order('created_at'),
         sb.from('items').select().eq('room_id', roomId).order('created_at'),
         sb.from('cards').select().eq('room_id', roomId),
         sb.from('claims').select().eq('room_id', roomId).order('created_at'),
+        // votes no tiene room_id: se filtra por la sala de su cante (con una lista de ids
+        // en la URL, una partida larga acabaría superando el límite de tamaño de la petición)
+        sb.from('votes').select('claim_id, player_id, value, claims!inner(room_id)').eq('claims.room_id', roomId),
       ]);
-      const claimRows = ok(claims) as { id: string }[];
-      const votes = claimRows.length
-        ? ok(await sb.from('votes').select().in('claim_id', claimRows.map((c) => c.id)))
-        : [];
       return {
         room: ok(room) as Room,
         players: ok(players) as Player[],
         items: ok(items) as Item[],
         cards: ok(cards) as never,
-        claims: claimRows as never,
-        votes: votes as never,
+        claims: ok(claims) as never,
+        votes: (ok(votes) as Vote[]).map(({ claim_id, player_id, value }) => ({ claim_id, player_id, value })),
       };
     },
 
