@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { backend } from '../backend';
-import { allLines, completedLines, type PlayerScore } from '../lib/scoring';
+import { allLines, completedLines, isComplete, type PlayerScore } from '../lib/scoring';
 import { itemText } from '../lib/suggestions';
 import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
@@ -16,7 +16,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
   const [sticker, setSticker] = useSticker();
   const [picking, setPicking] = useState(false);
 
-  if (!card || card.cells.length !== n * n || card.cells.some((id) => !snap.items.some((i) => i.id === id))) {
+  if (!isComplete(card, n)) {
     return (
       <section className="empty-state var-empty">
         <h2 className="display">Sin cartón</h2>
@@ -98,7 +98,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
                 const item = asking;
                 setAsking(null);
                 vibrate(40);
-                run(() => backend.claim(snap.room.id, me.id, item.id));
+                run(() => backend.claim(item.id));
               }}
             >¡Cantarlo!</button>
           </div>

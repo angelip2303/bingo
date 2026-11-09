@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { allLines, computeScores, POINTS } from './scoring';
-import type { Card, Claim, Item, Player } from '../types';
+import type { Card, Cell, Claim, Item, Player } from '../types';
 
 const p = (id: string): Player => ({ id, room_id: 'r', name: id, created_at: '' });
 const item = (id: string, happened_at: string | null = null): Item => ({
   id, room_id: 'r', text: id, candidate: null, created_by: null, happened_at, created_at: '',
 });
-const card = (player_id: string, cells: string[]): Card => ({ id: 'c' + player_id, room_id: 'r', player_id, cells, updated_at: '' });
+const card = (player_id: string, cells: Cell[]): Card => ({ id: 'c' + player_id, room_id: 'r', player_id, cells, updated_at: '' });
 
 describe('allLines', () => {
   it('4x4 tiene 4 filas + 4 columnas + 2 diagonales', () => {
@@ -72,5 +72,11 @@ describe('computeScores', () => {
   it('cartón incompleto no puntúa casillas', () => {
     const { scores } = computeScores(2, [p('x')], [card('x', ['a'])], [item('a', '1')], []);
     expect(scores[0].cells).toBe(0);
+  });
+
+  it('cartón con huecos (null) no puntúa aunque tenga la longitud justa', () => {
+    const { scores } = computeScores(2, [p('x')], [card('x', ['a', 'b', null, 'd'])], [item('a', '1'), item('b', '2')], []);
+    expect(scores[0].cells).toBe(0);
+    expect(scores[0].lines).toBe(0);
   });
 });

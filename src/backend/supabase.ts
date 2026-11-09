@@ -1,7 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Account, Backend } from './api';
 import { usernameKey } from '../lib/account';
-import { randomCode } from './api';
 import type { Item, Player, Result, Room } from '../types';
 
 export function createSupabaseBackend(url: string, key: string): Backend {
@@ -40,11 +39,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     if (!acc) throw new Error('Pon tu nombre primero');
     return acc.id; // clave del nombre
   };
-  const myName = async () => {
-    const acc = await loadAccount();
-    if (!acc) throw new Error('Pon tu nombre primero');
-    return acc.username;
-  };
 
   const ok = <T>(res: { data: T; error: { message: string } | null }): T => {
     if (res.error) throw new Error(res.error.message);
@@ -72,24 +66,10 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
 
     async createRoom({ name, candidates, boardSize, seedItems }) {
-      const playerName = await myName();
-      // reintento por si el código aleatorio choca
-      let room: Room | null = null;
-      for (let i = 0; i < 5 && !room; i++) {
-        const res = await sb.from('rooms')
-          .insert({ code: randomCode(), name, candidates, board_size: boardSize })
-          .select().single();
-        if (!res.error) room = res.data as Room;
-        else if (!res.error.message.includes('duplicate')) throw new Error(res.error.message);
-      }
-      if (!room) throw new Error('No se pudo crear la sala');
-      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName, username_key: await ensureSession() }).select('id, room_id, name, created_at').single()) as Player;
-      ok(await sb.from('rooms').update({ referee_id: player.id }).eq('id', room.id));
-      room.referee_id = player.id;
-      if (seedItems.length) {
-        ok(await sb.from('items').insert(seedItems.map((s) => ({ room_id: room!.id, text: s.text, candidate: s.candidate }))));
-      }
-      return { room, player };
+      await ensureSession();
+      return ok(await sb.rpc('create_room', {
+        p_name: name, p_candidates: candidates, p_board_size: boardSize, p_items: seedItems,
+      })) as Room;
     },
 
     async findRoom(code) {
@@ -106,13 +86,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
 
     async joinRoom(code) {
-      const playerName = await myName();
-      const room = await api.findRoom(code);
-      if (!room) throw new Error('No existe ninguna sala con ese código');
-      const existing = await api.me(room.id);
-      if (existing) return { room, player: existing };
-      const player = ok(await sb.from('players').insert({ room_id: room.id, name: playerName, username_key: await ensureSession() })
-        .select('id, room_id, name, created_at').single()) as Player;
+      await ensureSession();
+      const player = ok(await sb.rpc('join_room', { p_code: code })) as Player;
+      const room = ok(await sb.from('rooms').select().eq('id', player.room_id).single()) as Room;
       return { room, player };
     },
 
@@ -166,20 +142,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
 
 
     async saveCard(roomId, playerId, cells) {
-      ok(await sb.from('cards').upsert(
-        { room_id: roomId, player_id: playerId, cells, updated_at: new Date().toISOString() },
-        { onConflict: 'player_id' },
-      ));
+      // una fila: escritura directa. La validan RLS (solo el tuyo y en preparación) y el trigger check_card.
+      ok(await sb.from('cards').upsert({ room_id: roomId, player_id: playerId, cells }, { onConflict: 'player_id' }));
     },
 
-    async claim(roomId, playerId, itemId) {
-      const res = await sb.from('claims').insert({ room_id: roomId, item_id: itemId, player_id: playerId });
-      if (res.error) {
-        // ya había un cante pendiente → nos sumamos con un voto a favor
-        const pending = ok(await sb.from('claims').select('id').eq('item_id', itemId).eq('status', 'pending').maybeSingle()) as { id: string } | null;
-        if (!pending) throw new Error(res.error.message);
-        await api.vote(pending.id, playerId, true);
-      }
+    async claim(itemId) {
+      ok(await sb.rpc('claim_item', { p_item: itemId }));
     },
 
     async vote(claimId, playerId, value) {
@@ -203,8 +171,8 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
 
 
-    async saveResults(roomId, results) {
-      ok(await sb.rpc('save_results', { p_room: roomId, p_results: results }));
+    async finishRoom(roomId, results) {
+      ok(await sb.rpc('finish_room', { p_room: roomId, p_results: results }));
     },
 
     async listResults() {

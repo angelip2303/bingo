@@ -88,7 +88,7 @@ function Lobby({ account, onSignOut }: { account: Account; onSignOut: () => void
   async function create() {
     setBusy('create'); setErr(null);
     try {
-      const { room } = await backend.createRoom({
+      const room = await backend.createRoom({
         name: 'Debate del 29N', candidates: DEFAULT_CANDIDATES, boardSize: size, seedItems: seedItems(DEFAULT_CANDIDATES),
       });
       goToRoom(room.code);

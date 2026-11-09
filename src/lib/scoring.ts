@@ -1,4 +1,4 @@
-import type { Card, Claim, Item, Player } from '../types';
+import type { Card, Cell, Claim, Item, Player } from '../types';
 
 export const POINTS = {
   cell: 1,
@@ -40,8 +40,20 @@ export function allLines(size: number): number[][] {
   return lines;
 }
 
-export function completedLines(cells: string[], happened: Set<string>, size: number): number[][] {
-  return allLines(size).filter((line) => line.every((i) => cells[i] && happened.has(cells[i])));
+/** Casillas con evento (las vacías son null). */
+export function filledCount(cells: Cell[]): number {
+  return cells.filter((id) => id != null).length;
+}
+
+/** Cartón con todas sus casillas llenas: el único que juega. */
+export type CompleteCard = Omit<Card, 'cells'> & { cells: string[] };
+
+export function isComplete(card: Card | undefined, size: number): card is CompleteCard {
+  return !!card && card.cells.length === size * size && filledCount(card.cells) === size * size;
+}
+
+export function completedLines(cells: Cell[], happened: Set<string>, size: number): number[][] {
+  return allLines(size).filter((line) => line.every((i) => { const id = cells[i]; return id != null && happened.has(id); }));
 }
 
 /**
@@ -56,7 +68,8 @@ export function computeScores(
   claims: Claim[],
 ): { scores: PlayerScore[]; achievements: Achievement[] } {
   const total = size * size;
-  const cardByPlayer = new Map(cards.map((c) => [c.player_id, c]));
+  // solo juegan los cartones completos
+  const cardByPlayer = new Map(cards.filter((c): c is CompleteCard => isComplete(c, size)).map((c) => [c.player_id, c]));
   const happenedOrdered = items
     .filter((i) => i.happened_at)
     .sort((a, b) => a.happened_at!.localeCompare(b.happened_at!) || a.id.localeCompare(b.id));
@@ -73,7 +86,7 @@ export function computeScores(
     const newBingos: string[] = [];
     for (const p of players) {
       const card = cardByPlayer.get(p.id);
-      if (!card || card.cells.length !== total || !card.cells.includes(item.id)) continue;
+      if (!card || !card.cells.includes(item.id)) continue;
       const before = linesSoFar.get(p.id) ?? 0;
       const now = completedLines(card.cells, happened, size).length;
       if (now > before) {
@@ -93,10 +106,9 @@ export function computeScores(
 
   const scores = players.map<PlayerScore>((player) => {
     const card = cardByPlayer.get(player.id);
-    const valid = !!card && card.cells.length === total;
-    const cells = valid ? card!.cells.filter((id) => happened.has(id)).length : 0;
+    const cells = card ? card.cells.filter((id) => happened.has(id)).length : 0;
     const lines = linesSoFar.get(player.id) ?? 0;
-    const bingo = valid && cells === total;
+    const bingo = !!card && cells === total;
     const mine = claims.filter((c) => c.player_id === player.id);
     const hawkEyes = mine.filter((c) => c.status === 'accepted').length;
     const yellowCards = mine.filter((c) => c.status === 'rejected').length;

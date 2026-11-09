@@ -1,5 +1,5 @@
 import type { NewItem } from '../backend/api';
-import type { Candidate, Item } from '../types';
+import type { Candidate, Cell, Item } from '../types';
 
 /** {c} se sustituye por el nombre del candidato al pintar, así renombrar funciona */
 export const CANDIDATE_TEMPLATES = [
@@ -92,8 +92,8 @@ function shuffle<T>(arr: T[]): T[] {
  * Asistente: rellena los huecos vacíos de un cartón con eventos del banco,
  * repartiendo entre candidatos y generales para que no quede descompensado.
  */
-export function fillCard(cells: string[], bank: Item[], candidateCount: number): string[] {
-  const used = new Set(cells.filter(Boolean));
+export function fillCard(cells: Cell[], bank: Item[], candidateCount: number): Cell[] {
+  const used = new Set(cells.filter((id): id is string => id != null));
   const groupKey = (c: number | null) => (c == null ? 'g' : String(c));
   const counts = new Map<string, number>();
   for (const id of used) {
@@ -108,7 +108,7 @@ export function fillCard(cells: string[], bank: Item[], candidateCount: number):
   }
   const keys = ['g', ...Array.from({ length: candidateCount }, (_, i) => String(i))];
   const out = [...cells];
-  const empties = shuffle(out.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0));
+  const empties = shuffle(out.map((v, i) => (v == null ? i : -1)).filter((i) => i >= 0));
   for (const idx of empties) {
     // el grupo con menos casillas que aún tenga eventos
     const k = keys

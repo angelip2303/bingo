@@ -30,6 +30,15 @@ npx supabase link --project-ref <ref>      # el ref está en la URL del proyecto
 npx supabase db push                       # aplica las migraciones pendientes
 ```
 
+### Cómo se persiste
+
+- **Una fila → escritura directa a la tabla.** La protegen RLS (quién) y restricciones/triggers (qué es válido): cartón, votos, eventos nuevos, fase y silbato de la sala.
+- **Varias escrituras que van juntas → una función de Postgres** (una transacción, todo o nada): `create_room`, `join_room`, `claim_item`, `resolve_claim`, `set_happened`, `finish_room`.
+- **La base de datos garantiza la coherencia**, no el cliente: todo lo de una sala apunta a cosas de esa sala (FKs compuestas) y `check_card` valida cada cartón.
+- **Huecos del cartón = `null`** en la app y en la base de datos; no hay valores centinela.
+- **Se guarda el estado completo, no cambios sueltos**: el cartón entero en cada guardado. Es idempotente, así que se puede agrupar y reintentar sin miedo, y mover/rellenar/barajar no necesitan casos especiales. Con el mismo cartón en dos dispositivos a la vez, gana el último guardado.
+- **Edición en el cliente → `useAutosave`** (`src/lib/autosave.ts`): una petición a la vez, gana el último valor, reintenta si falla y guarda al salir.
+
 En el dashboard: **Authentication → Sign In / Providers → Allow anonymous sign-ins** activado.
 No hay registro: cada uno pone su nombre. El mismo nombre en el ordenador y en el móvil es el mismo jugador.
 

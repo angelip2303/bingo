@@ -8,16 +8,19 @@ export function useRoom(roomId: string) {
   const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const alive = useRef(true);
+  /** número de la última recarga pedida: una respuesta vieja nunca pisa a una nueva */
+  const seq = useRef(0);
 
   const reload = useCallback(() => {
     clearTimeout(timer.current);
     // agrupa ráfagas de cambios (p. ej. el árbitro resuelve y se tocan 2 tablas)
     timer.current = setTimeout(async () => {
+      const n = ++seq.current;
       try {
         const s = await backend.snapshot(roomId);
-        if (alive.current) { setSnap(s); setError(null); }
+        if (alive.current && n === seq.current) { setSnap(s); setError(null); }
       } catch (e) {
-        if (alive.current) setError((e as Error).message);
+        if (alive.current && n === seq.current) setError((e as Error).message);
       }
     }, 120);
   }, [roomId]);

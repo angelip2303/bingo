@@ -37,12 +37,14 @@ export interface Item {
   created_at: string;
 }
 
+export type Cell = string | null;
+
 export interface Card {
   id: string;
   room_id: string;
   player_id: string;
-  /** ids de items, longitud board_size², en orden fila a fila */
-  cells: string[];
+  /** board_size² casillas fila a fila: id del evento, o null si está vacía */
+  cells: Cell[];
   updated_at: string;
 }
 

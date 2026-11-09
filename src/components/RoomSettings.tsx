@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { backend } from '../backend';
 import { goToRoom } from '../App';
 import { finalStandings } from '../lib/history';
+import { filledCount } from '../lib/scoring';
 import { ConfirmDialog } from './shared';
 import QrCode from './QrCode';
 import type { RoomCtx } from './RoomScreen';
@@ -26,11 +27,10 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   const link = `${location.origin}${location.pathname}#/r/${room.code}`;
   const total = room.board_size ** 2;
   const lobby = room.status === 'lobby';
-  const itemIds = new Set(snap.items.map((i) => i.id));
 
   const progress = snap.players.map((p) => {
     const card = snap.cards.find((c) => c.player_id === p.id);
-    const filled = card ? card.cells.filter((id) => itemIds.has(id)).length : 0;
+    const filled = card ? filledCount(card.cells) : 0;
     return { player: p, filled, done: filled === total };
   });
   const missing = progress.filter((p) => !p.done);
@@ -42,10 +42,7 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   const phaseIdx = PHASES.findIndex((p) => p.id === room.status);
 
   const start = () => run(() => backend.setStatus(room.id, 'live'));
-  const finish = () => run(async () => {
-    await backend.saveResults(room.id, finalStandings(scores, room.name));
-    await backend.setStatus(room.id, 'finished');
-  });
+  const finish = () => run(() => backend.finishRoom(room.id, finalStandings(scores, room.name)));
 
   const share = async () => {
     try {

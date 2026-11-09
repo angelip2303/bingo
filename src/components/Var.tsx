@@ -131,7 +131,7 @@ function WhistlePanel({ ctx, onClose }: { ctx: RoomCtx; onClose?: () => void }) 
   const [last, setLast] = useState<Item | null>(null);
   const pendingIds = new Set(snap.claims.filter((c) => c.status === 'pending').map((c) => c.item_id));
   const inCards = new Map<string, number>();
-  snap.cards.forEach((c) => c.cells.forEach((id) => inCards.set(id, (inCards.get(id) ?? 0) + 1)));
+  snap.cards.forEach((c) => c.cells.forEach((id) => id != null && inCards.set(id, (inCards.get(id) ?? 0) + 1)));
   const nq = norm(q.trim());
   const list = snap.items
     .filter((i) => !i.happened_at && !pendingIds.has(i.id))

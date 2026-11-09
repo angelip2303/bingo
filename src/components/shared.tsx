@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { backend } from '../backend';
 import { itemBody, itemText } from '../lib/suggestions';
-import type { Candidate, Item } from '../types';
+import type { Candidate, Cell, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import FitText from './FitText';
 
@@ -259,13 +259,13 @@ export function EventPanel({
 }
 
 /** Reparto del cartón como barra de hemiciclo: un tramo por candidato y los huecos. */
-export function SeatBar({ cells, items, candidates }: { cells: string[]; items: Item[]; candidates: Candidate[] }) {
+export function SeatBar({ cells, items, candidates }: { cells: Cell[]; items: Item[]; candidates: Candidate[] }) {
   const byId = new Map(items.map((i) => [i.id, i]));
   const per = candidates.map(() => 0);
   let general = 0;
   let filled = 0;
   for (const id of cells) {
-    const it = byId.get(id);
+    const it = id != null ? byId.get(id) : undefined;
     if (!it) continue;
     filled++;
     if (it.candidate == null) general++;

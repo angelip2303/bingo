@@ -1,4 +1,4 @@
-import type { PlayerScore } from '../lib/scoring';
+import { isComplete, type PlayerScore } from '../lib/scoring';
 import type { RoomCtx } from './RoomScreen';
 
 export default function Ranking({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
@@ -14,8 +14,7 @@ export default function Ranking({ ctx, scores }: { ctx: RoomCtx; scores: PlayerS
       </div>
       <ol className="rank-list">
         {scores.map((s, i) => {
-          const card = snap.cards.find((c) => c.player_id === s.player.id);
-          const ready = !!card && card.cells.filter((id) => snap.items.some((it) => it.id === id)).length === total;
+          const ready = isComplete(snap.cards.find((c) => c.player_id === s.player.id), snap.room.board_size);
           return (
             <li key={s.player.id} className={`rank ${s.player.id === me.id ? 'me' : ''}`}>
               <span className="pos">{i + 1}</span>

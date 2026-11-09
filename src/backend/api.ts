@@ -1,4 +1,4 @@
-import type { Candidate, Item, Player, Result, Room, RoomStatus, Snapshot } from '../types';
+import type { Candidate, Cell, Item, Player, Result, Room, RoomStatus, Snapshot } from '../types';
 
 export interface NewItem {
   text: string;
@@ -23,7 +23,7 @@ export interface Backend {
     candidates: Candidate[];
     boardSize: number;
     seedItems: NewItem[];
-  }): Promise<{ room: Room; player: Player }>;
+  }): Promise<Room>;
   /** Entra a la sala con tu cuenta; si ya estabas te devuelve tu jugador */
   joinRoom(code: string): Promise<{ room: Room; player: Player }>;
   /** Tu jugador en la sala (con tu cuenta, desde cualquier dispositivo), si existe */
@@ -34,9 +34,10 @@ export interface Backend {
   subscribe(roomId: string, onChange: () => void): () => void;
 
   addItems(roomId: string, playerId: string, items: NewItem[]): Promise<Item[]>;
-  saveCard(roomId: string, playerId: string, cells: string[]): Promise<void>;
+  saveCard(roomId: string, playerId: string, cells: Cell[]): Promise<void>;
 
-  claim(roomId: string, playerId: string, itemId: string): Promise<void>;
+  /** canta un evento de tu cartón (si ya estaba cantado, suma tu voto a favor) */
+  claim(itemId: string): Promise<void>;
   vote(claimId: string, playerId: string, value: boolean): Promise<void>;
 
   // Solo árbitro
@@ -44,15 +45,9 @@ export interface Backend {
   setReferee(roomId: string, playerId: string): Promise<void>;
   resolveClaim(claimId: string, accept: boolean): Promise<void>;
   setHappened(itemId: string, happened: boolean): Promise<void>;
-  /** guarda (o reemplaza) la clasificación final de la sala */
-  saveResults(roomId: string, results: Omit<Result, 'room_id' | 'finished_at'>[]): Promise<void>;
+  /** guarda (o reemplaza) la clasificación final y cierra la partida */
+  finishRoom(roomId: string, results: Omit<Result, 'room_id' | 'finished_at'>[]): Promise<void>;
 
   /** histórico de todas las partidas terminadas */
   listResults(): Promise<Result[]>;
-}
-
-export function randomCode(): string {
-  // sin caracteres ambiguos (0/O, 1/I/L)
-  const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 5 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
 }
