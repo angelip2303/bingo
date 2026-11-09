@@ -950,3 +950,32 @@ input, select { font-weight: 500; }
 .code-input { font-weight: 500; letter-spacing: .25em !important; }
 .tl-time { font-size: 15px; font-weight: 600; }
 .sb-points b, .desk-stats b, .fame-wins b, .fame-pts b, .score-strip b { letter-spacing: -.02em; }
+
+/* ---------- invitación con QR ---------- */
+.invite { flex-direction: row; align-items: center; gap: 18px; padding: 18px; }
+.qr { flex: none; width: 148px; aspect-ratio: 1; border-radius: var(--r-m); overflow: hidden; background: #f3efe7; }
+.qr svg { display: block; width: 100%; height: 100%; }
+.invite-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.invite-info .big-code { font-size: 40px; padding-left: 0; }
+.invite-actions { display: flex; flex-direction: column; gap: 8px; align-self: stretch; }
+@media (max-width: 420px) {
+  .invite { flex-direction: column; text-align: center; }
+  .invite-info { align-items: center; align-self: stretch; }
+  .qr { width: 200px; }
+}
+/* QR a pantalla completa para enseñarlo a la sala */
+.qr-stage {
+  position: fixed; inset: 0; z-index: 70; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px;
+  background: var(--bg); animation: fade .2s both;
+}
+.qr-stage .qr { width: min(70vmin, 520px); border-radius: var(--r-l); }
+.qr-stage-text { font: 400 clamp(22px, 4vw, 40px)/1.1 var(--display); text-transform: uppercase; letter-spacing: .03em; text-align: center; }
+.qr-stage .big-code { font-size: clamp(44px, 9vw, 96px); }
+.qr-stage-who { font: 400 clamp(44px, 10vw, 110px)/.9 var(--display); text-transform: uppercase; color: var(--yellow); text-align: center; }
+/* vaciar casilla: solo la X, sin fondo ni movimiento; gana opacidad al pasar */
+.cell-clear, .cell-clear:hover, .cell-clear:active {
+  background: none; backdrop-filter: none; box-shadow: none; transform: none;
+}
+.cell-clear { color: var(--ink); font-size: 15px; opacity: .55; transition: opacity .15s; }
+.cell-clear:hover, .cell-clear:focus-visible { opacity: 1; }

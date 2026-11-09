@@ -3,6 +3,13 @@ import { backend } from './backend';
 import type { Player, Room } from './types';
 import Home, { LoginForm } from './components/Home';
 import RoomScreen from './components/RoomScreen';
+import { usernameKey } from './lib/account';
+
+/** ?as=<nombre> en el enlace: QR personal para entrar como ese jugador sin escribir nada */
+function parseAs(): string | null {
+  const m = location.hash.match(/[?&]as=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
 
 function parseHash(): string | null {
   const m = location.hash.match(/^#\/r\/([A-Za-z0-9]+)/);
@@ -48,6 +55,12 @@ function RoomGate({ code }: { code: string }) {
   const enter = async () => {
     setState({ s: 'loading' });
     try {
+      const as = parseAs();
+      if (as) {
+        const cur = await backend.currentUser();
+        if (!cur || usernameKey(cur.username) !== usernameKey(as)) await backend.signIn(as);
+        history.replaceState(null, '', `#/r/${code}`);
+      }
       if (!(await backend.currentUser())) return setState({ s: 'login' });
       const room = await backend.findRoom(code);
       if (!room) return setState({ s: 'missing' });

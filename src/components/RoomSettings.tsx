@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { backend } from '../backend';
 import { goToRoom } from '../App';
 import { finalStandings } from '../lib/history';
 import { ConfirmDialog } from './shared';
+import QrCode from './QrCode';
 import type { RoomCtx } from './RoomScreen';
 import type { RoomStatus } from '../types';
 
@@ -19,6 +21,8 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   const { room } = snap;
   const [copied, setCopied] = useState(false);
   const [ask, setAsk] = useState<Ask>(null);
+  /** QR a pantalla completa: el de la sala (null) o el de un jugador concreto */
+  const [stage, setStage] = useState<{ who: string | null } | null>(null);
   const link = `${location.origin}${location.pathname}#/r/${room.code}`;
   const total = room.board_size ** 2;
   const lobby = room.status === 'lobby';
@@ -53,10 +57,36 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   return (
     <div className="settings">
       <section className="card-block invite">
-        <span className="block-label">Código de la sala</span>
-        <b className="big-code">{room.code}</b>
-        <button className="btn" onClick={share}>{copied ? 'Enlace copiado' : 'Compartir enlace'}</button>
+        <QrCode value={link} label={`QR para entrar en la sala ${room.code}`} />
+        <div className="invite-info">
+          <span className="block-label">Escanea o usa el código</span>
+          <b className="big-code">{room.code}</b>
+          <div className="invite-actions">
+            <button className="btn" onClick={() => setStage({ who: null })}>Mostrar en grande</button>
+            <button className="btn ghost" onClick={share}>{copied ? 'Enlace copiado' : 'Compartir enlace'}</button>
+          </div>
+        </div>
       </section>
+
+      {stage && createPortal(
+        <div className="qr-stage" role="dialog" aria-modal="true" aria-label={stage.who ? `Entrar como ${stage.who}` : `Entrar en la sala ${room.code}`} onClick={() => setStage(null)}>
+          {stage.who ? (
+            <>
+              <p className="qr-stage-who">{stage.who}</p>
+              <QrCode value={`${link}?as=${encodeURIComponent(stage.who)}`} label={`QR para entrar como ${stage.who}`} />
+              <p className="qr-stage-text">Escanéalo con tu móvil y entras con tu cartón</p>
+            </>
+          ) : (
+            <>
+              <QrCode value={link} label={`QR para entrar en la sala ${room.code}`} />
+              <p className="qr-stage-text">Escanea con la cámara y pon tu nombre</p>
+              <b className="big-code">{room.code}</b>
+            </>
+          )}
+          <button className="btn ghost small" onClick={() => setStage(null)}>Cerrar</button>
+        </div>,
+        document.body,
+      )}
 
       <section className="card-block desk">
         <div className="block-head">
@@ -126,6 +156,7 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
                 )}
               </div>
               {lobby && <span className={`player-state ${done ? 'ok' : ''}`}>{done ? 'Listo' : filled ? `${filled}/${total}` : 'Sin empezar'}</span>}
+              <button className="btn small ghost" onClick={() => setStage({ who: p.name })} aria-label={`QR para que ${p.name} entre desde su móvil`}>QR</button>
               {isReferee && p.id !== room.referee_id && (
                 <button className="btn small ghost" onClick={() => run(() => backend.setReferee(room.id, p.id))} aria-label={`Pasar el silbato a ${p.name}`}>Silbato</button>
               )}
