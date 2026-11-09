@@ -54,7 +54,7 @@ function CreateRoom() {
   const [name, setName] = useState('Debate del 29N');
   const [player, setPlayer] = useState(savedName);
   const [size, setSize] = useState(4);
-  const [cands, setCands] = useState<Candidate[]>(DEFAULT_CANDIDATES);
+
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -63,7 +63,7 @@ function CreateRoom() {
     setBusy(true); setErr(null);
     try {
       saveName(player.trim());
-      const clean = cands.map((c, i) => ({ ...c, name: c.name.trim() || `Candidato ${i + 1}` }));
+      const clean = DEFAULT_CANDIDATES.map((c, i) => ({ ...c, name: c.name.trim() || `Candidato ${i + 1}` }));
       const { room } = await backend.createRoom({
         name: name.trim() || 'Debate', candidates: clean, boardSize: size,
         playerName: player.trim(), seedItems: seedItems(clean),
@@ -83,24 +83,14 @@ function CreateRoom() {
       <label className="field"><span>Tu nombre</span>
         <input value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={24} required placeholder="Cómo te verán los demás" />
       </label>
-      <fieldset className="field">
-        <legend>Candidatos</legend>
-        <div className="cand-grid">
-          {cands.map((c, i) => (
-            <div key={i} className="cand-input" style={{ '--cand': c.color } as React.CSSProperties}>
-              <input
-                type="color" value={c.color} aria-label={`Color del candidato ${i + 1}`}
-                onChange={(e) => setCands(cands.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))}
-              />
-              <input
-                value={c.name} maxLength={20} aria-label={`Nombre del candidato ${i + 1}`}
-                onChange={(e) => setCands(cands.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
-              />
-            </div>
+      <div className="field">
+        <span>En el debate</span>
+        <div className="balance">
+          {DEFAULT_CANDIDATES.map((c) => (
+            <span key={c.name} className="bal" style={{ '--cand': c.color } as React.CSSProperties}><b>{c.name}</b></span>
           ))}
         </div>
-        <small className="muted">Puedes cambiarlos luego desde la pestaña Sala.</small>
-      </fieldset>
+      </div>
       <fieldset className="field">
         <legend>Tamaño del cartón</legend>
         <div className="seg small">
