@@ -200,7 +200,7 @@ function VarCheck({ claims, ctx }: { claims: Claim[]; ctx: RoomCtx }) {
       <div className="vc-head">
         <span className="vc-badge">VAR</span>
         <span className="vc-title">Revisando</span>
-        {claims.length > 1 && (
+        {(
           <span className="vc-nav">
             <button className="icon-btn" onClick={() => setI(Math.max(0, idx - 1))} disabled={idx === 0} aria-label="Cante anterior">◀</button>
             <b className="num">{idx + 1}/{claims.length}</b>
