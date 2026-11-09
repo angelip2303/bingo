@@ -147,14 +147,9 @@ input:not([type='color']):focus, select:focus { border-color: var(--ink); }
   border: 1px solid var(--line); background: transparent; cursor: pointer; font-size: 13px; font-weight: 600;
   transition: border-color .15s, background-color .15s;
 }
-.chip[style] { border-left: 4px solid var(--cand); }
 .chip[aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-.tag {
-  display: inline-block; align-self: flex-start; font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
-  padding: 4px 6px; border-radius: 4px; color: var(--muted); background: var(--surface-2);
-}
-.tag[style] { color: #0a0a0a; background: var(--cand); }
+
 
 /* ---------- sala ---------- */
 .room { min-height: 100dvh; padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom) + 16px); }
@@ -191,15 +186,15 @@ input:not([type='color']):focus, select:focus { border-color: var(--ink); }
   position: relative; aspect-ratio: 1; min-height: 64px;
   display: flex; align-items: center; justify-content: center; text-align: center;
   padding: 6px; border-radius: var(--r-s);
-  background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--cand);
+  background: var(--surface); border: 1px solid var(--line);
   font-size: clamp(10px, 2.6vw, 13px); font-weight: 600; line-height: 1.2;
   cursor: pointer; overflow: hidden;
   transition: transform .15s var(--ease), border-color .15s, background-color .2s;
 }
-.cell span { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; hyphens: auto; }
+.cell > .cell-text { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; hyphens: auto; }
 .grid[style*='--n: 5'] .cell { font-size: clamp(9px, 2.2vw, 12px); }
 .cell:active:not(:disabled) { transform: scale(.96); }
-.cell.empty { border-style: dashed; border-top-width: 1px; color: var(--muted); }
+.cell.empty { border-style: dashed; color: var(--muted); }
 .cell .plus { font-size: 22px; font-weight: 400; }
 .cell.selected { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
 
@@ -225,9 +220,6 @@ input:not([type='color']):focus, select:focus { border-color: var(--ink); }
 .score-strip span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 
 .balance { display: flex; flex-wrap: wrap; gap: 6px; }
-.bal { font-size: 12px; color: var(--muted); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); }
-.bal[style] { border-left: 4px solid var(--cand); }
-.bal b { color: var(--ink); margin-left: 2px; }
 .save-state { font-size: 12px; color: var(--muted); }
 .save-state.error { color: #ff7a7a; }
 
@@ -330,5 +322,55 @@ input:not([type='color']):focus, select:focus { border-color: var(--ink); }
 /* la lista de eventos del editor scrollea por dentro para no enterrar el formulario */
 .editor-bank .pick-list { max-height: 55vh; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 /* el sello deja leer lo que pasó */
-.cell.done span { opacity: .55; }
+.cell.done > .cell-text { opacity: .55; }
 .stamp { opacity: .75; }
+
+/* ---------- EL rótulo de candidato (único, solo cambia el tamaño) ---------- */
+.mark {
+  flex: none; width: var(--mark); height: var(--mark);
+  display: inline-grid; place-items: center; overflow: hidden;
+}
+.mark.logo { background: #fff; padding: 2px; }
+.mark.logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.mark.text { background: rgba(0, 0, 0, .28); color: #fff; font: 400 calc(var(--mark) * .42)/1 var(--display); letter-spacing: .02em; }
+
+.tag {
+  display: inline-flex; align-items: center; align-self: flex-start; max-width: 100%;
+  height: var(--mark); border-radius: 2px; overflow: hidden;
+  background: var(--cand); color: #fff;
+  font: 400 calc(var(--mark) * .56)/1 var(--display); letter-spacing: .04em; text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+  white-space: nowrap;
+}
+.tag-name { padding: 0 calc(var(--mark) * .32); overflow: hidden; text-overflow: ellipsis; line-height: var(--mark); padding-top: 1px; }
+.tag-lg { font-size: 19px; }
+.tag-sm { font-size: 10.5px; letter-spacing: .03em; }
+
+/* el mismo rótulo como botón (filtros) */
+.tag-btn { flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 3px; transition: transform .15s var(--ease), opacity .15s; opacity: .45; outline-offset: 2px; }
+.tag-btn:hover { opacity: .8; transform: translateY(-1px); }
+.tag-btn:active { transform: scale(.96); }
+.tag-btn[aria-pressed='true'] { opacity: 1; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.chips { padding: 4px 4px 6px; }
+
+.cand-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cand-row .tag { width: 100%; }
+
+/* casilla: rótulo arriba, la acción debajo */
+.cell { flex-direction: column; gap: 6px; }
+.cell .cell-tag { display: flex; justify-content: center; max-width: 100%; }
+.cell.filled[style], .grid.live .cell[style] { background: color-mix(in srgb, var(--cand) 9%, var(--surface)); }
+
+.bal { display: inline-flex; align-items: center; gap: 0; padding: 0; border: 0; border-radius: 2px; overflow: hidden; background: var(--surface-2); }
+.bal b { padding: 0 8px; color: var(--ink); margin: 0; font-size: 13px; }
+
+/* ---------- inicio: un nombre, dos salidas ---------- */
+.join-row { display: flex; gap: 8px; }
+.join-row .code-input { flex: 1; min-width: 0; font-size: 22px !important; min-height: 56px !important; letter-spacing: .25em; }
+.join-row .btn { min-height: 56px; flex: none; padding: 0 22px; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .2em; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.size-pick { display: flex; align-items: center; gap: 6px; justify-content: center; }
+.size-pick .chip { font-family: var(--mono); font-size: 13px; text-transform: none; }
+.home-head .cand-row { margin-top: 6px; }
+.cell .cell-tag + .cell-text { -webkit-line-clamp: 3; }

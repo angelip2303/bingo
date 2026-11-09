@@ -3,6 +3,10 @@ export type RoomStatus = 'lobby' | 'live' | 'finished';
 export interface Candidate {
   name: string;
   color: string;
+  /** siglas del partido, se usan si no hay logo */
+  party?: string;
+  /** ruta relativa a public/, p. ej. logos/psoe.svg */
+  logo?: string;
 }
 
 export interface Room {

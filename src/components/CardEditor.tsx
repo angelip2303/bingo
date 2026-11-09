@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { backend } from '../backend';
-import { balance, fillCard, itemText } from '../lib/suggestions';
+import { balance, fillCard, itemBody, itemText } from '../lib/suggestions';
 import { AddItemForm, CandFilter, CandTag, matchesFilter } from './shared';
 import type { RoomCtx } from './RoomScreen';
 
@@ -78,7 +78,8 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
                 aria-label={it ? `Casilla ${i + 1}: ${itemText(it, snap.room.candidates)}` : `Casilla ${i + 1} vacía`}
                 aria-pressed={selected === i}
               >
-                {it ? <span>{itemText(it, snap.room.candidates)}</span> : <span className="plus" aria-hidden>+</span>}
+                {it && it.candidate != null && <span className="cell-tag"><CandTag index={it.candidate} candidates={snap.room.candidates} size="sm" /></span>}
+                {it ? <span className="cell-text">{itemBody(it, snap.room.candidates)}</span> : <span className="plus" aria-hidden>+</span>}
               </button>
             );
           })}
@@ -86,9 +87,9 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
 
         <div className="balance" aria-label="Reparto por candidato">
           {snap.room.candidates.map((c, i) => (
-            <span key={i} className="bal" style={{ '--cand': c.color } as React.CSSProperties}>{c.name} <b>{bal.per[i]}</b></span>
+            <span key={i} className="bal"><CandTag index={i} candidates={snap.room.candidates} /><b className="num">{bal.per[i]}</b></span>
           ))}
-          <span className="bal">General <b>{bal.general}</b></span>
+          <span className="bal"><CandTag index={null} candidates={snap.room.candidates} /><b className="num">{bal.general}</b></span>
         </div>
         {bal.warning && <p className="warn">{bal.warning}</p>}
 
@@ -118,7 +119,7 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
             <li key={it.id}>
               <button className={`pick ${used.has(it.id) ? 'used' : ''}`} onClick={() => put(it.id)}>
                 <CandTag index={it.candidate} candidates={snap.room.candidates} />
-                <span>{itemText(it, snap.room.candidates)}</span>
+                <span>{itemBody(it, snap.room.candidates)}</span>
                 {used.has(it.id) && <small className="muted">En tu cartón</small>}
               </button>
             </li>

@@ -67,6 +67,18 @@ export function itemText(item: Pick<Item, 'text' | 'candidate'>, candidates: Can
   return item.text.replace(/\{c\}/g, name);
 }
 
+/**
+ * Texto para ir junto al rótulo del candidato: si empieza por su nombre, lo quita
+ * ("{c} dice X" → "Dice X") porque el rótulo ya lo dice.
+ */
+export function itemBody(item: Pick<Item, 'text' | 'candidate'>, candidates: Candidate[]): string {
+  if (item.candidate != null && item.text.startsWith('{c} ')) {
+    const rest = item.text.slice(4).replace(/\{c\}/g, candidates[item.candidate]?.name ?? '¿?');
+    return rest.charAt(0).toUpperCase() + rest.slice(1);
+  }
+  return itemText(item, candidates);
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {

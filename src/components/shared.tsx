@@ -3,25 +3,62 @@ import { backend } from '../backend';
 import type { Candidate, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 
-export function CandTag({ index, candidates }: { index: number | null; candidates: Candidate[] }) {
-  if (index == null) return <span className="tag">General</span>;
-  const c = candidates[index];
-  return <span className="tag" style={{ '--cand': c?.color } as React.CSSProperties}>{c?.name ?? '¿?'}</span>;
+const brokenLogos = new Set<string>();
+
+const acronym = (party = '') => (party.includes(' ') ? party.split(/\s+/).map((w) => w[0]).join('') : party);
+
+/** Logo real del partido si está en public/logos; si no, sus siglas en tipografía (nunca un logo dibujado). */
+export function PartyMark({ cand, size = 20 }: { cand?: Candidate; size?: number }) {
+  const [broken, setBroken] = useState(() => !cand?.logo || brokenLogos.has(cand.logo));
+  if (!cand) return null;
+  const style = { '--cand': cand.color, '--mark': `${size}px` } as React.CSSProperties;
+  if (!broken && cand.logo) {
+    return (
+      <span className="mark logo" style={style}>
+        <img
+          src={import.meta.env.BASE_URL + cand.logo} alt="" width={size} height={size}
+          onError={() => { brokenLogos.add(cand.logo!); setBroken(true); }}
+        />
+      </span>
+    );
+  }
+  return <span className="mark text" style={style} aria-hidden>{acronym(cand.party) || cand.name[0]}</span>;
+}
+
+export type TagSize = 'sm' | 'md' | 'lg';
+const MARK_PX: Record<TagSize, number> = { sm: 18, md: 24, lg: 40 };
+
+/**
+ * EL rótulo de candidato (estilo debate de tele): bloque de color + marca del partido + apellido.
+ * Es el único componente para pintar a un candidato en toda la app; solo cambia el tamaño.
+ * Sin candidato pinta el mismo rótulo en neutro (General, Todos…).
+ */
+export function Tag({ cand, label, size = 'md' }: { cand?: Candidate; label?: string; size?: TagSize }) {
+  return (
+    <span className={`tag tag-${size}`} style={{ '--cand': cand?.color ?? '#3a3a3a', '--mark': `${MARK_PX[size]}px` } as React.CSSProperties}>
+      {cand && <PartyMark cand={cand} size={MARK_PX[size]} />}
+      <span className="tag-name">{label ?? cand?.name}</span>
+    </span>
+  );
+}
+
+export function CandTag({ index, candidates, size }: { index: number | null; candidates: Candidate[]; size?: TagSize }) {
+  if (index == null) return <Tag label="General" size={size} />;
+  return <Tag cand={candidates[index]} size={size} />;
 }
 
 export function CandFilter({
   value, onChange, candidates,
 }: { value: 'all' | 'g' | number; onChange: (v: 'all' | 'g' | number) => void; candidates: Candidate[] }) {
-  const opts: ['all' | 'g' | number, string, string?][] = [
-    ['all', 'Todos'], ['g', 'General'], ...candidates.map((c, i) => [i, c.name, c.color] as [number, string, string]),
+  const opts: ['all' | 'g' | number, React.ReactNode][] = [
+    ['all', <Tag label="Todos" />],
+    ['g', <Tag label="General" />],
+    ...candidates.map((c, i) => [i, <Tag cand={c} />] as [number, React.ReactNode]),
   ];
   return (
     <div className="chips" role="group" aria-label="Filtrar por candidato">
-      {opts.map(([v, label, color]) => (
-        <button
-          key={String(v)} className="chip" aria-pressed={value === v} onClick={() => onChange(v)}
-          style={color ? ({ '--cand': color } as React.CSSProperties) : undefined}
-        >{label}</button>
+      {opts.map(([v, tag]) => (
+        <button key={String(v)} className="tag-btn" aria-pressed={value === v} onClick={() => onChange(v)}>{tag}</button>
       ))}
     </div>
   );

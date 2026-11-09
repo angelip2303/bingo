@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { backend } from '../backend';
 import { completedLines, type PlayerScore } from '../lib/scoring';
-import { itemText } from '../lib/suggestions';
+import { itemBody, itemText } from '../lib/suggestions';
 import { vibrate } from '../lib/useRoom';
 import type { Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
+import { CandTag } from './shared';
 
 export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerScore[] }) {
   const { snap, me, run } = ctx;
@@ -52,8 +53,9 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
               onClick={() => setAsking(it)}
               aria-label={`${itemText(it, snap.room.candidates)}${done ? ', ha pasado' : pending ? ', en el VAR' : ''}`}
             >
-              <span>{itemText(it, snap.room.candidates)}</span>
-              {done && <i className="stamp" aria-hidden>Sí</i>}
+              {it.candidate != null && <span className="cell-tag"><CandTag index={it.candidate} candidates={snap.room.candidates} size="sm" /></span>}
+              <span className="cell-text">{itemBody(it, snap.room.candidates)}</span>
+              {done &&<i className="stamp" aria-hidden>Sí</i>}
               {pending && !done && <i className="var-tag" aria-hidden>VAR</i>}
             </button>
           );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { backend } from '../backend';
-import { itemText } from '../lib/suggestions';
+import { itemBody, itemText } from '../lib/suggestions';
 import { AddItemForm, CandFilter, CandTag, matchesFilter } from './shared';
 import type { RoomCtx } from './RoomScreen';
 
@@ -47,7 +47,7 @@ export default function Bank({ ctx }: { ctx: RoomCtx }) {
             <li key={it.id} className={`bank-item ${it.happened_at ? 'done' : ''}`}>
               <div className="bank-text">
                 <CandTag index={it.candidate} candidates={snap.room.candidates} />
-                <span>{itemText(it, snap.room.candidates)}</span>
+                <span>{itemBody(it, snap.room.candidates)}</span>
                 <small className="muted">
                   {count ? `En ${count} ${count === 1 ? 'cartón' : 'cartones'}` : 'En ningún cartón'}
                   {pendingIds.has(it.id) && ' · en el VAR'}

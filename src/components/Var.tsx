@@ -1,5 +1,5 @@
 import { backend } from '../backend';
-import { itemText } from '../lib/suggestions';
+import { itemBody } from '../lib/suggestions';
 import type { Claim } from '../types';
 import { CandTag } from './shared';
 import type { RoomCtx } from './RoomScreen';
@@ -53,7 +53,7 @@ function ClaimRow({ claim, ctx }: { claim: Claim; ctx: RoomCtx }) {
           {who} {pending ? 'canta' : claim.status === 'accepted' ? '· validado' : '· tarjeta amarilla'}
         </span>
       </div>
-      <p className="claim-text">{itemText(item, snap.room.candidates)}</p>
+      <p className="claim-text">{itemBody(item, snap.room.candidates)}</p>
 
       {pending && (
         <>
