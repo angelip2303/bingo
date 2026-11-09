@@ -20,7 +20,7 @@ export default function Board({ ctx, scores }: { ctx: RoomCtx; scores: PlayerSco
     return (
       <section className="empty-state var-empty">
         <h2 className="display">Sin cartón</h2>
-        <p className="muted">La partida empezó sin que completaras tu cartón. Puedes seguir cantando eventos y votando en el VAR.</p>
+        <p className="muted">La partida empezó sin que completaras tu cartón. Puedes seguir la partida y votar en el VAR.</p>
       </section>
     );
   }

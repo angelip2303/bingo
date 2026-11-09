@@ -175,6 +175,9 @@ export function createLocalBackend(): Backend {
     },
 
     async claim(roomId, playerId, itemId) {
+      if (!read().cards.some((c) => c.player_id === playerId && c.cells.includes(itemId))) {
+        throw new Error('Solo puedes cantar lo que está en tu cartón');
+      }
       write((db) => {
         const pending = db.claims.find((c) => c.item_id === itemId && c.status === 'pending');
         if (pending) {

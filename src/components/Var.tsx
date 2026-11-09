@@ -51,18 +51,19 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
   }
 
   // árbitro en ordenador: panel de pitar siempre a la derecha, como el editor del cartón
-  const panelOpen = live && (browsing || (wide && isReferee));
+  // solo el árbitro pita a mano; los jugadores cantan desde su cartón
+  const panelOpen = live && isReferee && (browsing || wide);
   const pinned = wide && isReferee;
-  const openButton = live && !panelOpen && (
+  const openButton = live && isReferee && !panelOpen && (
     <button className={`btn big ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)}>
-      {isReferee ? 'Pitar' : 'Cantar un evento'}
+      Pitar
     </button>
   );
   // barra fija al pie, separada de la lista (como la barra de estado del cartón)
-  const actionBar = live && !panelOpen && (
+  const actionBar = live && isReferee && !panelOpen && (
     <div className="var-actions">
       <button className={`btn big ${isReferee ? 'hot' : ''}`} onClick={() => setBrowsing(true)}>
-        {isReferee ? 'Pitar un evento' : 'Cantar un evento'}
+        Pitar un evento
       </button>
     </div>
   );
@@ -74,7 +75,9 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
         {empty ? (
           <div className="var-empty">
             <h2 className="display">Sin jugadas</h2>
-            <p className="muted">Todavía no ha pasado nada. Cuando alguien cante o el árbitro pite, aparecerá aquí.</p>
+            <p className="muted">{isReferee
+              ? 'Todavía no ha pasado nada. Pita lo que pase o espera a que canten desde sus cartones.'
+              : 'Todavía no ha pasado nada. Canta desde tu cartón; si pasa algo que no está en ningún cartón, pídeselo al árbitro.'}</p>
             {openButton}
             <p className="muted small">Árbitro: <b>{referee?.name ?? 'nadie'}</b></p>
           </div>

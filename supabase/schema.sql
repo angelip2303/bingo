@@ -175,7 +175,11 @@ create policy "own card update" on cards for update to authenticated
 -- Cantes y votos
 drop policy if exists "claim" on claims;
 create policy "claim" on claims for insert to authenticated
-  with check (owns_player(player_id) and status = 'pending');
+  with check (
+    owns_player(player_id) and status = 'pending'
+    -- solo se canta lo que está en tu cartón; lo demás lo pita el árbitro
+    and exists (select 1 from cards c where c.player_id = claims.player_id and claims.item_id = any (c.cells))
+  );
 drop policy if exists "vote" on votes;
 create policy "vote" on votes for insert to authenticated with check (owns_player(player_id));
 drop policy if exists "revote" on votes;
