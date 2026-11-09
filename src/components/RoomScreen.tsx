@@ -61,15 +61,16 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
   const ctx: RoomCtx = { snap, me, isReferee, reload, run };
   const pending = snap.claims.filter((c) => c.status === 'pending').length;
   const live = snap.room.status === 'live';
+  const statusLabel = live ? 'En directo' : snap.room.status === 'lobby' ? 'Preparando' : 'Terminado';
 
   return (
     <div className="room">
       <header className="topbar">
         <div className="topbar-in">
-          <span className={`onair ${live ? '' : 'off'}`}>
-            <i aria-hidden /> {live ? 'En directo' : snap.room.status === 'lobby' ? 'Preparando' : 'Terminado'}
+          <span className={`onair compact ${live ? '' : 'off'}`} title={statusLabel}>
+            <i aria-hidden /><span className="onair-label">{statusLabel}</span>
           </span>
-          <h1 className="visually-hidden">{snap.room.name}</h1>
+          <h1 className="room-title">{snap.room.name}</h1>
           <button className="icon-btn" onClick={() => setPanel('guide')} aria-label="Cómo se juega">?</button>
           <button className="code-chip" onClick={() => setPanel('room')} aria-label={`Sala ${snap.room.code}: compartir, jugadores y árbitro`}>
             {snap.room.code}

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { backend } from '../backend';
 import { fillCard, itemText } from '../lib/suggestions';
 import type { Item } from '../types';
-import { CellFace, EventPanel, SeatBar } from './shared';
+import { CellFace, ConfirmDialog, EventPanel, SeatBar } from './shared';
+import { IconShuffle, IconSparkles } from './icons';
 import type { RoomCtx } from './RoomScreen';
 
 type Draft = Pick<Item, 'text' | 'candidate'>;
@@ -42,11 +43,6 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
     return () => clearTimeout(t);
   }, [cells, snap.room.id, me.id]);
 
-  useEffect(() => {
-    if (!confirmReset) return;
-    const t = setTimeout(() => setConfirmReset(false), 3000);
-    return () => clearTimeout(t);
-  }, [confirmReset]);
 
   /** Pone un evento en la casilla (si ya estaba en otra, intercambia) y salta al siguiente hueco. */
   const place = (idx: number, id: string) => {
@@ -67,61 +63,56 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
   return (
     <div className={`stage-view editor ${editing ? 'editing' : ''}`}>
       <div className="editor-main">
-        <div className="view-head">
-          <h2 className="display">Tu cartón</h2>
-          <span className={`save-state ${status}`} role="status">
-            {status === 'saving' ? 'Guardando…' : status === 'error' ? 'Error al guardar' : empties === 0 ? 'Listo para jugar' : `Faltan ${empties}`}
-          </span>
-        </div>
-
         <div className="stage">
           <div className="grid" style={{ '--n': n } as React.CSSProperties}>
             {view.map((id, i) => {
               const showDraft = i === open && draft;
               const it = showDraft ? draft : id ? byId.get(id) : null;
               return (
-                <button
-                  key={i}
-                  className={`cell ${it ? 'filled' : 'empty'} ${open === i ? 'selected' : ''} ${showDraft ? 'draft' : ''}`}
-                  style={it?.candidate != null ? ({ '--cand': candidates[it.candidate]?.color } as React.CSSProperties) : undefined}
-                  onClick={() => { setDraft(null); setOpen(open === i ? null : i); }}
-                  aria-label={it ? `Casilla ${i + 1}: ${itemText(it, candidates)}. Editar` : `Casilla ${i + 1} vacía. Elegir evento`}
-                  aria-pressed={open === i}
-                >
-                  {it ? <CellFace item={it} candidates={candidates} /> : <span className="plus" aria-hidden>+</span>}
-                </button>
+                <div key={i} className="cell-slot">
+                  <button
+                    className={`cell ${it ? 'filled' : 'empty'} ${open === i ? 'selected' : ''} ${showDraft ? 'draft' : ''}`}
+                    style={it?.candidate != null ? ({ '--cand': candidates[it.candidate]?.color } as React.CSSProperties) : undefined}
+                    onClick={() => { setDraft(null); setOpen(open === i ? null : i); }}
+                    aria-label={it ? `Casilla ${i + 1}: ${itemText(it, candidates)}. Editar` : `Casilla ${i + 1} vacía. Elegir evento`}
+                    aria-pressed={open === i}
+                  >
+                    {it ? <CellFace item={it} candidates={candidates} /> : <span className="plus" aria-hidden>+</span>}
+                  </button>
+                  {open === i && id && !showDraft && (
+                    <button className="cell-clear" onClick={() => setCells(view.map((x, j) => (j === i ? '' : x)))} aria-label={`Vaciar casilla ${i + 1}`}>✕</button>
+                  )}
+                </div>
               );
             })}
           </div>
         </div>
 
-        {!editing && (
-          <div className="dock">
-            <SeatBar cells={view} items={bank} candidates={candidates} />
-            <div className="dock-actions">
-              {empties > 0 ? (
-                <button className="btn" onClick={() => setCells(fillCard(view, bank, candidates.length))}>
-                  {empties === total ? 'Rellenar al azar' : `Rellenar ${empties} ${empties === 1 ? 'hueco' : 'huecos'}`}
-                </button>
-              ) : (
-                <span className="dock-hint">Toca una casilla para cambiarla</span>
-              )}
-              {empties < total && (
-                <button
-                  className={`btn ghost ${confirmReset ? 'danger' : ''}`}
-                  onClick={() => {
-                    if (!confirmReset) return setConfirmReset(true);
-                    setCells(fillCard(Array(total).fill(''), bank, candidates.length));
-                    setConfirmReset(false);
-                  }}
-                >
-                  {confirmReset ? '¿Seguro? Otra vez' : 'Cartón nuevo'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <div className="statusbar">
+          <SeatBar cells={view} items={bank} candidates={candidates} />
+          <button
+            className={`icon-btn ${empties === total ? 'nudge' : ''}`} disabled={empties === 0}
+            onClick={() => setCells(fillCard(view, bank, candidates.length))}
+            aria-label={`Rellenar ${empties} huecos al azar`} title="Rellenar huecos al azar"
+          ><IconSparkles /></button>
+          <button
+            className="icon-btn" disabled={empties === total}
+            onClick={() => setConfirmReset(true)}
+            aria-label="Cartón nuevo al azar" title="Cartón nuevo al azar"
+          ><IconShuffle /></button>
+        </div>
+        {status === 'error' && <p className="error small" role="status">No se ha podido guardar el cartón</p>}
       </div>
+
+      {confirmReset && (
+        <ConfirmDialog
+          title="¿Cartón nuevo?"
+          text={`Se cambian tus ${total - empties} casillas por eventos al azar. Lo que tenías se pierde.`}
+          confirm="Barajar"
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={() => { setCells(fillCard(Array(total).fill(''), bank, candidates.length)); setConfirmReset(false); setOpen(null); }}
+        />
+      )}
 
       {editing && (
         <EventPanel
@@ -131,7 +122,6 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
           currentId={view[open] || null}
           usedAt={usedAt}
           onPick={(id) => place(open, id)}
-          onClear={() => setCells(view.map((x, i) => (i === open ? '' : x)))}
           onMove={(d) => { setDraft(null); setOpen(Math.min(total - 1, Math.max(0, open + d))); }}
           onClose={() => { setDraft(null); setOpen(null); }}
           onDraft={setDraft}

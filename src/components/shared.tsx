@@ -54,12 +54,13 @@ export function CandFilter({
   value, onChange, candidates, withAll = true,
 }: { value: Filter; onChange: (v: Filter) => void; candidates: Candidate[]; withAll?: boolean }) {
   const opts: [Filter, React.ReactNode][] = [
-    ...(withAll ? [['all', <Tag label="Todos" />] as [Filter, React.ReactNode]] : []),
-    ['g', <Tag label="General" />],
-    ...candidates.map((c, i) => [i, <Tag cand={c} />] as [number, React.ReactNode]),
+    ...(withAll ? [['all', <Tag label="Todos" size="lg" />] as [Filter, React.ReactNode]] : []),
+    ['g', <Tag label="General" size="lg" />],
+    ...candidates.map((c, i) => [i, <Tag cand={c} size="lg" />] as [number, React.ReactNode]),
   ];
+  // una fila de rótulos del mismo ancho; si no cabe el apellido quedan las siglas
   return (
-    <div className="chips" role="group" aria-label="Candidato">
+    <div className="cand-pick" role="group" aria-label="Candidato" style={{ '--cols': opts.length } as React.CSSProperties}>
       {opts.map(([v, tag]) => (
         <button type="button" key={String(v)} className="tag-btn" aria-pressed={value === v} onClick={() => onChange(v)}>{tag}</button>
       ))}
@@ -93,10 +94,37 @@ export function Screen({ title, onClose, children }: { title: React.ReactNode; o
   return (
     <div className="screen" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
       <div className="screen-head">
-        <h2 className="display">{title}</h2>
         <button className="btn ghost small" onClick={onClose}>Volver</button>
       </div>
-      <div className="screen-body"><div className="screen-inner">{children}</div></div>
+      <div className="screen-body">
+        <div className="screen-inner">
+          <h2 className="display screen-title">{title}</h2>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Diálogo de confirmación centrado en la pantalla. */
+export function ConfirmDialog({
+  title, text, confirm, onConfirm, onCancel,
+}: { title: string; text: string; confirm: string; onConfirm: () => void; onCancel: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  return (
+    <div className="dialog-backdrop" onClick={onCancel}>
+      <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="dlg-title" className="display">{title}</h2>
+        <p>{text}</p>
+        <div className="dialog-actions">
+          <button className="btn ghost" onClick={onCancel} autoFocus>Cancelar</button>
+          <button className="btn hot" onClick={onConfirm}>{confirm}</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -145,7 +173,6 @@ export function EventComposer({
       <label className="field">
         <span>¿Qué va a pasar?</span>
         <div className="composer-input">
-          {cand != null && <Tag cand={candidates[cand]} />}
           <input
             value={text} onChange={(e) => setText(e.target.value)} maxLength={100} autoFocus
             placeholder={cand != null ? 'se le cae el boli' : 'Alguien se equivoca de nombre'}
@@ -158,7 +185,7 @@ export function EventComposer({
         </div>
       </div>}
       {dup && <p className="warn">Ese evento ya existe en el banco.</p>}
-      <div className="row-actions">
+      <div className="composer-foot">
         {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Volver</button>}
         <button className="btn" disabled={!t || !!dup || busy}>{submitLabel}</button>
       </div>
@@ -171,10 +198,10 @@ export function EventComposer({
  * Todo lo que haces se ve en el cartón al momento.
  */
 export function EventPanel({
-  ctx, index, total, currentId, usedAt, onPick, onClear, onMove, onClose, onDraft,
+  ctx, index, total, currentId, usedAt, onPick, onMove, onClose, onDraft,
 }: {
   ctx: RoomCtx; index: number; total: number; currentId: string | null; usedAt: Map<string, number>;
-  onPick: (id: string) => void; onClear: () => void; onMove: (delta: number) => void; onClose: () => void;
+  onPick: (id: string) => void; onMove: (delta: number) => void; onClose: () => void;
   onDraft: (d: Pick<Item, 'text' | 'candidate'> | null) => void;
 }) {
   const { snap } = ctx;
@@ -203,7 +230,6 @@ export function EventPanel({
       <div className="dock-tabs seg small" role="tablist">
         <button role="tab" aria-selected={mode === 'list'} onClick={() => setMode('list')}>Elegir</button>
         <button role="tab" aria-selected={mode === 'new'} onClick={() => setMode('new')}>Escribir</button>
-        {currentId && <button onClick={onClear}>Vaciar</button>}
       </div>
 
       <div className="dock-body">
