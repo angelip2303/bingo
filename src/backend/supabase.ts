@@ -161,6 +161,10 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       ok(await sb.from('rooms').update({ referee_id: playerId }).eq('id', roomId));
     },
 
+    async growBoard(roomId, size) {
+      ok(await sb.rpc('grow_board', { p_room: roomId, p_size: size }));
+    },
+
     async resolveClaim(claimId, accept) {
       ok(await sb.rpc('resolve_claim', { p_claim: claimId, p_accept: accept }));
     },

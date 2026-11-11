@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
 import { backend } from '../backend';
-import { itemBody, itemText } from '../lib/suggestions';
+import { isOut, itemBody, itemText } from '../lib/suggestions';
 import { useMediaQuery, vibrate } from '../lib/useRoom';
 import type { Claim, Item } from '../types';
 import { CandFilter, CandTag, matchesFilter } from './shared';
 import type { RoomCtx } from './RoomScreen';
 
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
 /**
@@ -126,17 +125,14 @@ export default function Var({ ctx }: { ctx: RoomCtx }) {
 function WhistlePanel({ ctx, onClose }: { ctx: RoomCtx; onClose?: () => void }) {
   const { snap, run } = ctx;
   const candidates = snap.room.candidates;
-  const [q, setQ] = useState('');
   const [filter, setFilter] = useState<'all' | 'g' | number>('all');
   const [last, setLast] = useState<Item | null>(null);
   const pendingIds = new Set(snap.claims.filter((c) => c.status === 'pending').map((c) => c.item_id));
   const inCards = new Map<string, number>();
   snap.cards.forEach((c) => c.cells.forEach((id) => id != null && inCards.set(id, (inCards.get(id) ?? 0) + 1)));
-  const nq = norm(q.trim());
   const list = snap.items
-    .filter((i) => !i.happened_at && !pendingIds.has(i.id))
+    .filter((i) => !i.happened_at && !pendingIds.has(i.id) && !isOut(i, candidates))
     .filter((i) => matchesFilter(i, filter))
-    .filter((i) => !nq || norm(itemText(i, candidates)).includes(nq))
     .sort((a, b) => (inCards.get(b.id) ?? 0) - (inCards.get(a.id) ?? 0));
 
   const select = (it: Item) => {
@@ -159,7 +155,6 @@ function WhistlePanel({ ctx, onClose }: { ctx: RoomCtx; onClose?: () => void }) 
           <button className="btn small ghost" onClick={() => { const it = last; setLast(null); run(() => backend.setHappened(it.id, false)); }}>Deshacer</button>
         </div>
       )}
-      <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento…" aria-label="Buscar evento" />
       <CandFilter value={filter} onChange={setFilter} candidates={candidates} />
       <ul className="pick-list">
         {list.map((it) => {

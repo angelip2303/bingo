@@ -426,7 +426,6 @@ html, body { height: 100%; overflow: hidden; }
 .code-chip:active { transform: scale(.96); }
 
 /* ---------- elegir evento ---------- */
-.search { flex: 1; }
 .cell.preview { flex: none; width: 116px; height: 116px; aspect-ratio: auto; font-size: 13px; cursor: default; }
 .cell.preview:active { transform: none; }
 .pick {
@@ -907,3 +906,21 @@ input, select { font-weight: 500; }
 .sticker-opt .sticker-emoji { font-size: 34px; }
 /* texto de casilla algo mayor; FitText lo reduce si no cabe */
 .cell > .cell-text { font-size: clamp(13px, 14cqi, 30px); }
+
+/* ---------- candidato que se ha bajado del debate ---------- */
+.tag.out { background: color-mix(in srgb, var(--cand) 25%, #2a2a2a); color: rgba(255, 255, 255, .55); text-shadow: none; }
+.tag.out .tag-name { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: var(--cand); }
+.tag-btn:disabled { position: relative; opacity: 1; cursor: not-allowed; transform: none; }
+.tag-btn:disabled .tag { opacity: .4; }
+.cand-cell { display: flex; min-width: 0; }
+.cand-out { position: relative; }
+.out-stamp {
+  position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%) rotate(-8deg);
+  padding: 3px 8px; border: 2px solid var(--accent); border-radius: 3px; background: rgba(10, 10, 10, .85);
+  color: var(--accent); font: 400 14px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  pointer-events: none;
+}
+.out-note { margin: 0; font-size: 13px; color: var(--muted); }
+.out-note b { color: var(--ink); }
+/* en los selectores el botón es pequeño: el sello se ajusta a su ancho */
+.cand-pick .out-stamp { white-space: normal; text-align: center; line-height: 1.05; max-width: 92%; padding: 2px 4px; border-width: 1.5px; font-size: clamp(8px, 13cqi, 13px); letter-spacing: .04em; }

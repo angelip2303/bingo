@@ -80,7 +80,7 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
           <SeatBar cells={cells} items={bank} candidates={candidates} />
           <button
             className={`icon-btn ${empties === total ? 'nudge' : ''}`} disabled={empties === 0}
-            onClick={() => setCells(fillCard(cells, bank, candidates.length))}
+            onClick={() => setCells(fillCard(cells, bank, candidates))}
             aria-label={`Rellenar ${empties} huecos al azar`} title="Rellenar huecos al azar"
           ><IconSparkles /></button>
           <button
@@ -103,7 +103,7 @@ export default function CardEditor({ ctx }: { ctx: RoomCtx }) {
           text={`Se cambian tus ${total - empties} casillas por eventos al azar. Lo que tenías se pierde.`}
           confirm="Barajar"
           onCancel={() => setConfirmReset(false)}
-          onConfirm={() => { setCells(fillCard(Array<Cell>(total).fill(null), bank, candidates.length)); setConfirmReset(false); setOpen(null); }}
+          onConfirm={() => { setCells(fillCard(Array<Cell>(total).fill(null), bank, candidates)); setConfirmReset(false); setOpen(null); }}
         />
       )}
 

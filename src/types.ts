@@ -5,6 +5,8 @@ export interface Candidate {
   color: string;
   /** siglas del partido */
   party?: string;
+  /** se ha bajado del debate: sus eventos no se pueden poner en el cartón ni pitar */
+  out?: boolean;
 }
 
 export interface Room {

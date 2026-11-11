@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { backend } from '../backend';
-import { itemBody, itemText } from '../lib/suggestions';
+import { isOut, itemBody, itemText } from '../lib/suggestions';
 import type { Candidate, Cell, Item } from '../types';
 import type { RoomCtx } from './RoomScreen';
 import FitText from './FitText';
@@ -21,14 +21,30 @@ const MARK_PX: Record<TagSize, number> = { sm: 18, md: 24, lg: 40 };
  * EL rótulo de candidato (estilo debate de tele): bloque de color + marca del partido + apellido.
  * Es el único componente para pintar a un candidato en toda la app; solo cambia el tamaño.
  * Sin candidato pinta el mismo rótulo en neutro (General, Todos…).
+ * Si se ha bajado del debate, sale tachado y apagado.
  */
 export function Tag({ cand, label, size = 'md' }: { cand?: Candidate; label?: string; size?: TagSize }) {
   return (
-    <span className={`tag tag-${size}`} style={{ '--cand': cand?.color ?? '#3a3a3a', '--mark': `${MARK_PX[size]}px` } as React.CSSProperties}>
+    <span
+      className={`tag tag-${size} ${cand?.out ? 'out' : ''}`}
+      style={{ '--cand': cand?.color ?? '#3a3a3a', '--mark': `${MARK_PX[size]}px` } as React.CSSProperties}
+      title={cand?.out ? `${cand.name} no va al debate` : undefined}
+    >
       {cand && <PartyMark cand={cand} size={MARK_PX[size]} />}
       <span className="tag-name">{label ?? cand?.name}</span>
     </span>
   );
+}
+
+/** Sello sobre el rótulo de un candidato que se ha bajado del debate. */
+export function OutStamp() {
+  return <span className="out-stamp" aria-hidden>Se ha cagado</span>;
+}
+
+/** Índices de los candidatos con los que se han bajado del debate al final. */
+export function candidateOrder(candidates: Candidate[]): number[] {
+  const idx = candidates.map((_, i) => i);
+  return [...idx.filter((i) => !candidates[i].out), ...idx.filter((i) => candidates[i].out)];
 }
 
 export function CandTag({ index, candidates, size }: { index: number | null; candidates: Candidate[]; size?: TagSize }) {
@@ -48,7 +64,7 @@ export function CandFilter({
 }: { value: Filter; onChange: (v: Filter) => void; candidates: Candidate[]; pick?: boolean }) {
   const opts: [Filter, React.ReactNode][] = [
     ['g', <Tag label="General" size="lg" />],
-    ...candidates.map((c, i) => [i, <Tag cand={c} size="lg" />] as [number, React.ReactNode]),
+    ...candidateOrder(candidates).map((i) => [i, <Tag cand={candidates[i]} size="lg" />] as [number, React.ReactNode]),
   ];
   const active = (v: Filter) => value === v;
   return (
@@ -56,8 +72,10 @@ export function CandFilter({
       {opts.map(([v, tag]) => (
         <button
           type="button" key={String(v)} className="tag-btn" aria-pressed={active(v)}
+          disabled={typeof v === 'number' && !!candidates[v]?.out}
+          aria-label={typeof v === 'number' && candidates[v]?.out ? `${candidates[v].name}: se ha bajado del debate` : undefined}
           onClick={() => onChange(!pick && active(v) ? 'all' : v)}
-        >{tag}</button>
+        >{tag}{typeof v === 'number' && candidates[v]?.out && <OutStamp />}</button>
       ))}
     </div>
   );
@@ -198,16 +216,14 @@ export function EventPanel({
   const { snap } = ctx;
   const candidates = snap.room.candidates;
   const [mode, setMode] = useState<'list' | 'new'>('list');
-  const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
   const list = useMemo(() => {
-    const nq = norm(q.trim());
     return snap.items
+      .filter((i) => !isOut(i, candidates))
       .filter((i) => matchesFilter(i, filter))
-      .filter((i) => !nq || norm(itemText(i, candidates)).includes(nq))
       .sort((a, b) => Number(usedAt.has(a.id)) - Number(usedAt.has(b.id)));
-  }, [snap.items, filter, q, candidates, usedAt]);
+  }, [snap.items, filter, candidates, usedAt]);
 
   return (
     <aside className="panel-dock" aria-label={`Editar casilla ${index + 1}`}>
@@ -233,7 +249,6 @@ export function EventPanel({
           />
         ) : (
           <>
-            <input className="search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar evento…" aria-label="Buscar evento" />
             <CandFilter value={filter} onChange={setFilter} candidates={candidates} />
             <ul className="pick-list">
               {list.map((it) => {
@@ -273,8 +288,9 @@ export function SeatBar({ cells, items, candidates }: { cells: Cell[]; items: It
   }
   const empty = cells.length - filled;
   const max = Math.max(...per);
+  const missing = candidates.findIndex((c, i) => !c.out && per[i] === 0);
   const warning =
-    filled >= cells.length / 2 && per.some((n) => n === 0) ? `${candidates[per.indexOf(0)].name} no sale en tu cartón`
+    filled >= cells.length / 2 && missing >= 0 ? `${candidates[missing].name} no sale en tu cartón`
       : max > cells.length / 2 ? 'Mucho de un mismo candidato'
         : null;
 

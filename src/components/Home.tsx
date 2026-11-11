@@ -6,12 +6,12 @@ import { hallOfFame, type FameRow } from '../lib/history';
 import type { Candidate } from '../types';
 import type { Account } from '../backend/api';
 import { validateUsername } from '../lib/account';
-import { CandTag, Screen } from './shared';
+import { CandTag, OutStamp, Screen, candidateOrder } from './shared';
 
 export const DEFAULT_CANDIDATES: Candidate[] = [
   { name: 'Sánchez', party: 'PSOE', color: '#e30613' },
   { name: 'Feijóo', party: 'PP', color: '#1d84ce' },
-  { name: 'Abascal', party: 'VOX', color: '#5ac035' },
+  { name: 'Abascal', party: 'VOX', color: '#5ac035', out: true }, // se ha cagado: no va al debate
   { name: 'Colau', party: 'Frente Amplio', color: '#d8256f' },
 ];
 
@@ -22,8 +22,19 @@ function Masthead({ tag = 'En directo' }: { tag?: string }) {
       <span className="onair"><i aria-hidden /> {tag}</span>
       <h1 className="display huge">Bingo<br />Salvaje</h1>
       <div className="cand-row">
-        {DEFAULT_CANDIDATES.map((c, i) => <CandTag key={c.name} index={i} candidates={DEFAULT_CANDIDATES} size="lg" />)}
+        {candidateOrder(DEFAULT_CANDIDATES).map((i) => {
+          const c = DEFAULT_CANDIDATES[i];
+          return (
+            <span key={c.name} className={`cand-cell ${c.out ? 'cand-out' : ''}`}>
+              <CandTag index={i} candidates={DEFAULT_CANDIDATES} size="lg" />
+              {c.out && <OutStamp />}
+            </span>
+          );
+        })}
       </div>
+      {DEFAULT_CANDIDATES.filter((c) => c.out).map((c) => (
+        <p key={c.name} className="out-note"><b>{c.name} no va al debate.</b> Cagadón histórico: sus casillas se han borrado de todos los cartones.</p>
+      ))}
     </header>
   );
 }

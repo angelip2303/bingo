@@ -52,9 +52,15 @@ const KNOWN_EXTRAS: Record<string, string[]> = {
 
 const normalize = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+/** El evento es de un candidato que se ha bajado del debate */
+export function isOut(item: Pick<Item, 'candidate'>, candidates: Candidate[]): boolean {
+  return item.candidate != null && !!candidates[item.candidate]?.out;
+}
+
 export function seedItems(candidates: Candidate[]): NewItem[] {
   const out: NewItem[] = GENERAL_SUGGESTIONS.map((text) => ({ text, candidate: null }));
   candidates.forEach((c, i) => {
+    if (c.out) return;
     CANDIDATE_TEMPLATES.forEach((text) => out.push({ text, candidate: i }));
     const key = Object.keys(KNOWN_EXTRAS).find((k) => normalize(c.name).includes(k));
     if (key) KNOWN_EXTRAS[key].forEach((text) => out.push({ text, candidate: i }));
@@ -92,7 +98,7 @@ function shuffle<T>(arr: T[]): T[] {
  * Asistente: rellena los huecos vacíos de un cartón con eventos del banco,
  * repartiendo entre candidatos y generales para que no quede descompensado.
  */
-export function fillCard(cells: Cell[], bank: Item[], candidateCount: number): Cell[] {
+export function fillCard(cells: Cell[], bank: Item[], candidates: Candidate[]): Cell[] {
   const used = new Set(cells.filter((id): id is string => id != null));
   const groupKey = (c: number | null) => (c == null ? 'g' : String(c));
   const counts = new Map<string, number>();
@@ -101,12 +107,12 @@ export function fillCard(cells: Cell[], bank: Item[], candidateCount: number): C
     if (it) counts.set(groupKey(it.candidate), (counts.get(groupKey(it.candidate)) ?? 0) + 1);
   }
   const groups = new Map<string, Item[]>();
-  for (const it of shuffle(bank.filter((b) => !used.has(b.id) && !b.happened_at))) {
+  for (const it of shuffle(bank.filter((b) => !used.has(b.id) && !b.happened_at && !isOut(b, candidates)))) {
     const k = groupKey(it.candidate);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(it);
   }
-  const keys = ['g', ...Array.from({ length: candidateCount }, (_, i) => String(i))];
+  const keys = ['g', ...candidates.flatMap((c, i) => (c.out ? [] : [String(i)]))];
   const out = [...cells];
   const empties = shuffle(out.map((v, i) => (v == null ? i : -1)).filter((i) => i >= 0));
   for (const idx of empties) {

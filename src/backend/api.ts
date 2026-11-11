@@ -43,6 +43,8 @@ export interface Backend {
   // Solo árbitro
   setStatus(roomId: string, status: RoomStatus): Promise<void>;
   setReferee(roomId: string, playerId: string): Promise<void>;
+  /** agranda el cartón de la sala (solo en preparación); cada evento se queda en su fila y columna */
+  growBoard(roomId: string, size: number): Promise<void>;
   resolveClaim(claimId: string, accept: boolean): Promise<void>;
   setHappened(itemId: string, happened: boolean): Promise<void>;
   /** guarda (o reemplaza) la clasificación final y cierra la partida */

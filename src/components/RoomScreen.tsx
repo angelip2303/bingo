@@ -79,7 +79,7 @@ export default function RoomScreen({ roomId, me }: { roomId: string; me: Player 
       </header>
 
       <main className="room-main">
-        {tab === 'card' && (snap.room.status === 'lobby' ? <CardEditor ctx={ctx} /> : <Board ctx={ctx} scores={scoring!.scores} />)}
+        {tab === 'card' && (snap.room.status === 'lobby' ? <CardEditor key={snap.room.board_size} ctx={ctx} /> : <Board ctx={ctx} scores={scoring!.scores} />)}
         {tab === 'var' && <Var ctx={ctx} />}
         {tab === 'ranking' && <Ranking ctx={ctx} scores={scoring!.scores} />}
       </main>

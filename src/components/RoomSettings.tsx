@@ -15,7 +15,7 @@ const PHASES: { id: RoomStatus; label: string }[] = [
   { id: 'finished', label: 'Final' },
 ];
 
-type Ask = null | 'start' | 'finish' | 'back';
+type Ask = null | 'start' | 'finish' | 'back' | { grow: number };
 
 export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
   const { snap, me, isReferee, run, scores } = ctx;
@@ -117,6 +117,15 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
           </p>
         )}
 
+        {isReferee && lobby && room.board_size < 5 && (
+          <div className="size-pick" role="group" aria-label="Agrandar el cartón">
+            <span className="muted small">Cartón {room.board_size}×{room.board_size} · agrandar a</span>
+            {[3, 4, 5].filter((s) => s > room.board_size).map((s) => (
+              <button type="button" key={s} className="chip" onClick={() => setAsk({ grow: s })}>{s}×{s}</button>
+            ))}
+          </div>
+        )}
+
         {isReferee ? (
           <div className="desk-actions">
             {lobby && <button className="btn big hot" onClick={() => (missing.length ? setAsk('start') : start())}>Empezar partida</button>}
@@ -180,6 +189,15 @@ export default function RoomSettings({ ctx }: { ctx: RoomCtx }) {
           confirm="Terminar"
           onCancel={() => setAsk(null)}
           onConfirm={() => { setAsk(null); finish(); }}
+        />
+      )}
+      {typeof ask === 'object' && ask && (
+        <ConfirmDialog
+          title={`¿Cartón de ${ask.grow}×${ask.grow}?`}
+          text={`Todos los cartones pasan de ${total} a ${ask.grow ** 2} casillas. Lo que hay se queda en su sitio y salen huecos nuevos abajo y a la derecha que cada uno tendrá que rellenar. Luego no se puede volver a encoger.`}
+          confirm="Agrandar"
+          onCancel={() => setAsk(null)}
+          onConfirm={() => { const size = ask.grow; setAsk(null); run(() => backend.growBoard(room.id, size)); }}
         />
       )}
       {ask === 'back' && (
